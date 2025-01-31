@@ -7,6 +7,10 @@ contract ForgingLogic {
     Token public forgeToken;
     address public owner;
 
+    //events for tracking transactions
+    event Forged(address indexed to, uint256 indexed tokenId);
+    event Traded(address indexed from, uint256 indexed to, uint256 indexed fromTokenId, uint256 toTokenId, uint256 amount);
+
     constructor(address _tokenAddress) {
         forgeToken = Token(_tokenAddress);
         owner = msg.sender;
@@ -50,17 +54,19 @@ contract ForgingLogic {
         }
         // mint new token
         forgeToken.forgeMint(user, tokenId, 1);
+        emit Forged(user, tokenId);
     }
 
     //function to trade any token for tokens 0-2
     function tradeToken(uint256 fromTokenId, uint256 toTokenId, uint256 amount) public {
         require(fromTokenId != toTokenId, "Cannot trade the same token");
         require(toTokenId <= Token.TOKEN_2, "Only tokens 0-2 can be traded for");
-        require(forgeToken.userTokenBalances[msg.sender][fromTokenId] >= amount, "Insufficient balance of token to trade");
-        require(forgeToken.userTokenBalances[msg.sender][toTokenId] >= amount, "Insufficient balance of token to trade");
+        require(token.balanceOf(msg.sender, fromTokenId) >= amount, "Insufficient balance of fromTokenId");
+        require(token.balanceOf(msg.sender, toTokenId) >= amount, "Insufficient balance of toTokenId");
 
         forgeToken.forgeBurn(msg.sender, fromTokenId, amount);
         forgeToken.forgeMint(msg.sender, toTokenId, amount);
+        emit Traded(msg.sender, toTokenId, fromTokenId, amount);
     }
 
     //function to get all token balances for an address
