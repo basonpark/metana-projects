@@ -30,24 +30,14 @@ contract ForgingLogic {
         forgeToken = Token(_tokenAddres);
     }
 
-    //function to mint tokens 0-2
-    function mintToken(uint256 tokenId, uint256 amount) public {
-        forgeToken.mint(tokenId, amount);
-    }
-
-    //function to burn tokens 3-6
-    function burnToken(uint256 tokenId, uint256 amount) public {
-        forgeToken.burn(tokenId, amount);
-    }
-
     //function to forge tokens 3-6
-    function forgeToken(uint256 tokenId) public {
+    function forge(uint256 tokenId) public {
         address user = msg.sender;
-        require(tokenId >= Token.TOKEN_3 && tokenId <= Token.TOKEN_6, "You can only forge tokens 3-6");
+        require(tokenId >= forgeToken.TOKEN_3 && tokenId <= forgeToken.TOKEN_6, "You can only forge tokens 3-6");
         
         //get required tokens to burn
         uint256[] memory requiredTokens = forgeToken.requiredTokens[tokenId];
-
+    
         // burn required tokens
         for (uint256 i = 0; i < requiredTokens.length; i++) {
             forgeToken.forgeBurn(user, requiredTokens[i], 1);
@@ -61,16 +51,19 @@ contract ForgingLogic {
     function tradeToken(uint256 fromTokenId, uint256 toTokenId, uint256 amount) public {
         require(fromTokenId != toTokenId, "Cannot trade the same token");
         require(toTokenId <= Token.TOKEN_2, "Only tokens 0-2 can be traded for");
-        require(token.balanceOf(msg.sender, fromTokenId) >= amount, "Insufficient balance of fromTokenId");
-        require(token.balanceOf(msg.sender, toTokenId) >= amount, "Insufficient balance of toTokenId");
+        require(forgeToken.balanceOf(msg.sender, fromTokenId) >= amount, "Insufficient balance of token to trade");
 
         forgeToken.forgeBurn(msg.sender, fromTokenId, amount);
         forgeToken.forgeMint(msg.sender, toTokenId, amount);
-        emit Traded(msg.sender, toTokenId, fromTokenId, amount);
+        emit Traded(msg.sender, fromTokenId, toTokenId, amount);
     }
 
     //function to get all token balances for an address
     function getAllTokenBalances(address user) public view returns (uint256[] memory) {
-        return forgeToken.getAllTokenBalances(user);
+        uint256[] memory balances = new uint256[](7);
+        for (uint256 i = 0; i < 7; i++) {
+            balances[i] = forgeToken.balanceOf(user, i);
+        }
+        return balances;
     }
 }
