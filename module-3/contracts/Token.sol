@@ -5,10 +5,9 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 
 contract Token is ERC1155, AccessControl {
 
-    //define roles
+    //roles
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
-    bytes32 public constant FORGER_ROLE = keccak256("FORGER_ROLE");
 
     //constants
     uint public constant TOKEN_0 = 0;
@@ -25,14 +24,6 @@ contract Token is ERC1155, AccessControl {
 
     //mapping to track last minted time
     mapping(address => uint256) public lastMinted;
-
-    // Mapping from token ID to array of required token IDs for minting
-    mapping(uint256 => uint256[]) public requiredTokens;
-
-
-    // Mapping to track authorized forging contracts
-    mapping(address => bool) public authorizedForgers;
-
     
     //events for tracking transactions
     event Minted(address indexed to, uint256 indexed tokenId, uint256 amount);
@@ -44,7 +35,7 @@ contract Token is ERC1155, AccessControl {
     }
 
     //function to freely mint tokens 0-2 
-    function mint(uint256 tokenId, uint256 amount) public onlyRole(MINTER_ROLE) {
+    function mint(uint256 tokenId, uint256 amount) public {
         require(tokenId <= TOKEN_2, "Only tokens 0-2 can be minted.");
         require(block.timestamp >= lastMinted[msg.sender] + cooldown, "Mint cooldown of 1 minute must be met.");
         lastMinted[msg.sender] = block.timestamp;
@@ -53,7 +44,7 @@ contract Token is ERC1155, AccessControl {
     }
 
     //function to burn tokens 3-6  
-    function burn(uint256 tokenId, uint256 amount) public onlyRole(BURNER_ROLE) {
+    function burn(uint256 tokenId, uint256 amount) public {
         require(tokenId >= TOKEN_3, "Only tokens 3-6 can be burned.");
         _burn(msg.sender, tokenId, amount);
         emit Burned(msg.sender, tokenId, amount);
@@ -63,26 +54,24 @@ contract Token is ERC1155, AccessControl {
         URI = newURI;
     }
 
-
-    // Function to get required tokens for a specific token ID
-    function getRequiredTokens(uint256 tokenId) public view returns (uint256[] memory) {
-        return requiredTokens[tokenId];
-    }
-
     // Special mint helper function for forging
-    function forgeMint(address to, uint256 tokenId, uint256 amount) external onlyRole(FORGER_ROLE) {
+    function forgeMint(address to, uint256 tokenId, uint256 amount) external {
         _mint(to, tokenId, amount, "");
         emit Minted(to, tokenId, amount);
     }
 
     // Special burn helper function for forging
-    function forgeBurn(address from, uint256 tokenId, uint256 amount) external onlyRole(FORGER_ROLE) {
+    function forgeBurn(address from, uint256 tokenId, uint256 amount) external {
         _burn(from, tokenId, amount);
         emit Burned(from, tokenId, amount);
     }
 
-    function setTokenRequirements(uint256 tokenId, uint256[] memory requirements) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        requiredTokens[tokenId] = requirements;
-    }
+    // Convenience functions for role assignment  
+    function assignMinterRole(address account) public onlyRole(DEFAULT_ADMIN_ROLE) {  
+        grantRole(MINTER_ROLE, account);  
+    }  
 
+    function assignBurnerRole(address account) public onlyRole(DEFAULT_ADMIN_ROLE) {  
+        grantRole(BURNER_ROLE, account);  
+    }   
 }
