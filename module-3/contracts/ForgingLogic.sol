@@ -52,7 +52,7 @@ contract ForgingLogic is AccessControl {
     //function to trade any token for tokens 0-2
     function tradeToken(uint256 fromTokenId, uint256 toTokenId, uint256 amount) public {
         require(fromTokenId != toTokenId, "Cannot trade the same token");
-        require(toTokenId <= 2, "Only tokens 0-2 can be traded for");
+        require(toTokenId <= 2 && fromTokenId <= 2, "Only tokens 0-2 can be traded");
         require(forgeToken.balanceOf(msg.sender, fromTokenId) >= amount, "Insufficient balance of token to trade");
 
         forgeToken.forgeBurn(msg.sender, fromTokenId, amount);
@@ -69,3 +69,8 @@ contract ForgingLogic is AccessControl {
         return balances;
     }
 }
+
+
+//Notes:
+//uint256[] cannot be passed in as parameter to function (requiredTokens); only uint8[]?
+//for mapping(uint256 => uint256[]) requiredTokens, set function in Token.sol not working

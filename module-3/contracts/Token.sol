@@ -2,6 +2,7 @@ pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 contract Token is ERC1155, AccessControl {
 
@@ -20,7 +21,7 @@ contract Token is ERC1155, AccessControl {
 
     uint256 public cooldown = 1 minutes;
 
-    string public URI = "https://token.com/api/{id}.json";
+    string public baseUri = "https://token.com/api/";
 
     //mapping to track last minted time
     mapping(address => uint256) public lastMinted;
@@ -30,7 +31,7 @@ contract Token is ERC1155, AccessControl {
     event Burned(address indexed from, uint256 indexed tokenId, uint256 amount);
 
     //constructor sets URI for token metadata
-    constructor() ERC1155(URI)  {
+    constructor() ERC1155("")  {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
@@ -43,25 +44,18 @@ contract Token is ERC1155, AccessControl {
         emit Minted(msg.sender, tokenId, amount);
     }
 
-    //function to burn tokens 3-6  
-    function burn(uint256 tokenId, uint256 amount) public {
-        require(tokenId >= TOKEN_3, "Only tokens 3-6 can be burned.");
-        _burn(msg.sender, tokenId, amount);
-        emit Burned(msg.sender, tokenId, amount);
-    }
-
-    function setURI(string memory newURI) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        URI = newURI;
+    function uri(uint256 tokenId) public view override returns (string memory) { 
+        return string(abi.encodePacked(baseUri, Strings.toString(tokenId), ".json"));
     }
 
     // Special mint helper function for forging
-    function forgeMint(address to, uint256 tokenId, uint256 amount) external {
+    function forgeMint(address to, uint256 tokenId, uint256 amount) external onlyRole(MINTER_ROLE) {
         _mint(to, tokenId, amount, "");
         emit Minted(to, tokenId, amount);
     }
 
     // Special burn helper function for forging
-    function forgeBurn(address from, uint256 tokenId, uint256 amount) external {
+    function forgeBurn(address from, uint256 tokenId, uint256 amount) external onlyRole(BURNER_ROLE) {
         _burn(from, tokenId, amount);
         emit Burned(from, tokenId, amount);
     }
