@@ -8,15 +8,25 @@ async function main() {
     "ForgingLogic"
   );
 
-  //deploy Token contract
-  const token = await TokenFactory.deploy();
-  await token.deployed();
+  console.log("TokenFactory:", TokenFactory);  
+
+  //deploy Token contract with a fixed gasLimit
+  console.log("Deploying Token contract...");
+  const token = await TokenFactory.deploy({
+    gasLimit: 500000,
+    gasPrice: hre.ethers.utils.parseUnits('30', 'gwei'),
+  });
+  console.log("Waiting for Token deployment...");
+  await token.waitForDeployment();
+
+  console.log("Token:", token); 
   console.log("Token deployed to:", token.address);
 
   //deploy ForgingLogic contract
   const forgingLogic = await ForgingLogicFactory.deploy(token.address);
   await forgingLogic.deployed();
   console.log("ForgingLogic deployed to:", forgingLogic.address);
+  
 }
 
 //execute main function

@@ -13,6 +13,7 @@ const config: HardhatUserConfig = {
         process.env.METAMASK_PRIVATE_KEY !== undefined
           ? [process.env.METAMASK_PRIVATE_KEY]
           : [],
+          gasPrice: 25000000000,
     },
   },
 };
