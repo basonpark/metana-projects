@@ -40,7 +40,7 @@ const ForgeToken = (props: Props) => {
   }
 
   return (
-    <Card className="w-[350px]">
+    <Card className="w-[350px] shadow-lg hover:shadow-xl transition-shadow duration-200">
       <CardHeader>
         <CardTitle>Forge Token (3-6)</CardTitle>
       </CardHeader>
@@ -50,9 +50,8 @@ const ForgeToken = (props: Props) => {
           <Input
             id="tokenId"
             type="number"
-            value={tokenId}
             onChange={(e) => setTokenId(Number(e.target.value))}
-            placeholder="Enter ID (3-6)"
+            placeholder="3 - 6"
           />
         </div>
         <Button onClick={handleForge} disabled={isPending} className="w-full">

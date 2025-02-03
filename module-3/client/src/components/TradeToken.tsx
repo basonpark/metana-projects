@@ -42,7 +42,7 @@ const TradeToken = (props: Props) => {
   }
 
   return (
-    <Card className="w-[350px]">
+    <Card className="w-[350px] shadow-lg hover:shadow-xl transition-shadow duration-200">
       <CardHeader>
         <CardTitle>Trade Tokens</CardTitle>
       </CardHeader>
@@ -52,9 +52,8 @@ const TradeToken = (props: Props) => {
           <Input
             id="fromTokenId"
             type="number"
-            value={fromTokenId}
             onChange={(e) => setFromTokenId(Number(e.target.value))}
-            placeholder="Enter ID (0-2)"
+            placeholder="0 - 2"
           />
         </div>
         <div className="grid w-full items-center gap-1.5">
@@ -62,9 +61,8 @@ const TradeToken = (props: Props) => {
           <Input
             id="toTokenId"
             type="number"
-            value={toTokenId}
             onChange={(e) => setToTokenId(Number(e.target.value))}
-            placeholder="Enter ID (0-2)"
+            placeholder="0 - 2"
           />
         </div>
         <div className="grid w-full items-center gap-1.5">
@@ -72,9 +70,8 @@ const TradeToken = (props: Props) => {
           <Input
             id="amount"
             type="number"
-            value={amount}
             onChange={(e) => setAmount(Number(e.target.value))}
-            placeholder="Amount"
+            placeholder="0"
           />
         </div>
         <Button onClick={handleTrade} disabled={isPending} className="w-full">

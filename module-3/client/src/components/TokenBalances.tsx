@@ -8,7 +8,7 @@ type Props = {};
 
 const TokenBalances = (props: Props) => {
   const { address } = useAccount();
-  const [balances, setBalances] = useState<number[]>([]);
+  const [balances, setBalances] = useState<number[]>(Array(7).fill(0));
 
   const { data } = useReadContract({
     address: process.env.FORGINGLOGIC_CONTRACT_ADDRESS as `0x${string}`,
@@ -16,7 +16,7 @@ const TokenBalances = (props: Props) => {
     functionName: "getAllTokenBalances",
     args: [address],
     query: {
-      refetchInterval: 2000, // Refetch every 2 seconds
+      refetchInterval: 5000, // Refetch every 2 seconds
     },
   });
 
@@ -27,16 +27,16 @@ const TokenBalances = (props: Props) => {
   }, [data]);
 
   return (
-    <Card className="w-[350px]">
+    <Card className="w-[350px] shadow-lg hover:shadow-xl transition-shadow duration-200">
       <CardHeader>
         <CardTitle>Token Balances</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-3 gap-x-8">
           {balances.map((balance, index) => (
             <div
               key={index}
-              className="flex justify-between items-center p-2 rounded-lg bg-secondary"
+              className="flex justify-between items-center gap-2 p-2 rounded-lg bg-secondary"
             >
               <span className="font-medium">Token {index}</span>
               <span className="font-bold">{balance.toString()}</span>
