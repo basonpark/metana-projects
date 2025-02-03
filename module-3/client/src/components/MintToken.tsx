@@ -1,7 +1,12 @@
+"use client";
 import React, { useState } from "react";
 import { useAccount, useWriteContract } from "wagmi";
 import TokenArtifact from "@artifacts/contracts/ForgingLogic.sol/ForgingLogic.json";
 import { toast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 
 type Props = {};
 
@@ -37,24 +42,36 @@ const MintToken = (props: Props) => {
   }
 
   return (
-    <div>
-      <h2>Mint Tokens (0-2) </h2>
-      <input
-        type="number"
-        value={tokenId}
-        onChange={(e) => setTokenId(Number(e.target.value))}
-        placeholder="Token Id (0-2)"
-      />
-      <input
-        type="number"
-        value={amount}
-        onChange={(e) => setAmount(Number(e.target.value))}
-        placeholder="Amount"
-      />
-      <button onClick={handleMint} disabled={isPending}>
-        {isPending ? "Minting..." : "Mint"}
-      </button>
-    </div>
+    <Card className="w-[350px]">
+      <CardHeader>
+        <CardTitle>Mint Tokens (0-2)</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <div className="grid w-full items-center gap-1.5">
+          <Label htmlFor="tokenId">Token ID</Label>
+          <Input
+            id="tokenId"
+            type="number"
+            value={tokenId}
+            onChange={(e) => setTokenId(Number(e.target.value))}
+            placeholder="Enter ID (0-2)"
+          />
+        </div>
+        <div className="grid w-full items-center gap-1.5">
+          <Label htmlFor="amount">Amount</Label>
+          <Input
+            id="amount"
+            type="number"
+            value={amount}
+            onChange={(e) => setAmount(Number(e.target.value))}
+            placeholder="Amount"
+          />
+        </div>
+        <Button onClick={handleMint} disabled={isPending} className="w-full">
+          {isPending ? "Minting..." : "Mint"}
+        </Button>
+      </CardContent>
+    </Card>
   );
 };
 

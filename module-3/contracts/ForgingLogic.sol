@@ -15,12 +15,11 @@ contract ForgingLogic is AccessControl {
     event Traded(address indexed from, uint256 indexed fromTokenId, uint256 toTokenId, uint256 amount);
 
     constructor(address _tokenAddress) {
+        require(_tokenAddress != address(0), "Invalid token address"); 
         forgeToken = Token(_tokenAddress);
         owner = msg.sender;
         setRequiredTokens();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        forgeToken.assignMinterRole(address(this));
-        forgeToken.assignBurnerRole(address(this));
     }
 
     function setRequiredTokens() private {

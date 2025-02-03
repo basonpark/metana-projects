@@ -1,6 +1,8 @@
+"use client";
 import React, { useState, useEffect } from "react";
 import { useAccount, useReadContract } from "wagmi";
 import ForgingLogicArtifact from "@artifacts/contracts/ForgingLogic.sol/ForgingLogic.json";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 type Props = {};
 
@@ -25,18 +27,24 @@ const TokenBalances = (props: Props) => {
   }, [data]);
 
   return (
-    <div>
-      <h2>Token Balances</h2>
-      <ul>
-        {balances.map((balance, index) => (
-          <li key={index}>
-            <p>
-              Token {index}: {balance.toString()}
-            </p>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <Card className="w-[350px]">
+      <CardHeader>
+        <CardTitle>Token Balances</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 gap-2">
+          {balances.map((balance, index) => (
+            <div
+              key={index}
+              className="flex justify-between items-center p-2 rounded-lg bg-secondary"
+            >
+              <span className="font-medium">Token {index}</span>
+              <span className="font-bold">{balance.toString()}</span>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
