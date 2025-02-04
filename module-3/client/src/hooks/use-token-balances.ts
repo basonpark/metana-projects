@@ -21,7 +21,7 @@ export function useTokenBalances() {
     args: [address],
     query: {
       enabled: Boolean(address),
-      refetchInterval: 3000,
+      refetchInterval: 500,
     },
   });
 

@@ -1,12 +1,18 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import { Card } from "@/components/ui/card";
+import React, { useEffect } from "react";
+import { useTokenURI } from "@/hooks/use-token-uri";
+import { MagicCard } from "@/components/ui/magic-card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+
+type NFTAttribute = {
+  trait_type: string;
+  value: string | number;
+};
 
 type NFTMetadata = {
   name: string;
   image: string;
-  rarity: string;
-  background: string;
+  attributes: NFTAttribute[];
 };
 
 type NFTCardProps = {
@@ -14,48 +20,79 @@ type NFTCardProps = {
   count: number;
 };
 
-export const NFTCard: React.FC<NFTCardProps> = ({ tokenId, count }) => {
-  const [metadata, setMetadata] = useState<NFTMetadata | null>(null);
-  // Use the same base URI as in your Token contract
-  const baseUri =
-    "https://ipfs.io/ipfs/bafybeif7ykc3h3r5eo24cpcy2suubbu5ns6k7e6soebqco53gykw6jkqlq/";
+export const NFTCard = ({ tokenId, count }: NFTCardProps) => {
+  const { uri, isLoading } = useTokenURI(tokenId);
+  const [metadata, setMetadata] = React.useState<NFTMetadata | null>(null);
 
+  //fetching metadata from URI
   useEffect(() => {
-    async function fetchMetadata() {
-      try {
-        const res = await fetch(`${baseUri}${tokenId}.json`);
-        const data = await res.json();
-        setMetadata(data);
-      } catch (error) {
-        console.error("Error fetching metadata for token", tokenId, error);
-      }
+    if (uri) {
+      const fetchMetadata = async () => {
+        try {
+          const res = await fetch(uri);
+          const data = await res.json();
+          setMetadata(data);
+          console.log("Metadata:", data);
+        } catch (error) {
+          console.error("Error fetching metadata:", error);
+        }
+      };
+      fetchMetadata();
     }
-    fetchMetadata();
-  }, [tokenId]);
+  }, [uri]);
 
-  if (!metadata) {
-    return (
-      <div className="w-64 h-80 bg-gray-800 flex items-center justify-center text-white">
-        Loading...
-      </div>
-    );
+  if (isLoading || !metadata) {
+    return <div>Loading...</div>;
   }
 
+  const baseUri = uri.substring(0, uri.lastIndexOf("/") + 1);
+  const imageUrl = `${baseUri}${metadata.image}`;
+
+  const getAttributeValue = (
+    traitType: string
+  ): string | number | undefined => {
+    const attribute = metadata.attributes.find(
+      (attr) => attr.trait_type === traitType
+    );
+    return attribute ? attribute.value : undefined;
+  };
+
   return (
-    <Card
-      style={{ background: metadata.background || "#fff" }}
-      className="w-64 shadow-lg hover:shadow-xl transition-shadow duration-200"
-    >
+    <Card className="overflow-hidden">
+      {metadata.image && (
+        <div className="relative w-full h-[280px]">
+          <img
+            src={imageUrl}
+            alt={metadata.name || `Token ${tokenId}`}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
       <div className="p-4">
-        <img
-          src={metadata.image}
-          alt={metadata.name}
-          className="w-full h-40 object-cover rounded"
-        />
-        <h2 className="mt-4 text-lg font-bold">{metadata.name}</h2>
-        <p className="text-sm">Rarity: {metadata.rarity}</p>
-        <p className="text-sm">Count: {count}</p>
+        <h3 className="font-bold text-lg">
+          {metadata.name || `Token ${tokenId}`}
+        </h3>
+        {count !== undefined && (
+          <p className="text-sm text-gray-500">Quantity: {count}</p>
+        )}
+        <div className="mt-2 space-y-1">
+          {getAttributeValue("Rarity") && (
+            <p className="text-sm">Rarity: {getAttributeValue("Rarity")}</p>
+          )}
+          {getAttributeValue("Background") && (
+            <p className="text-sm">
+              Background: {getAttributeValue("Background")}
+            </p>
+          )}
+          {getAttributeValue("Funk Score") && (
+            <p className="text-sm">
+              Funk Score: {getAttributeValue("Funk Score")}
+            </p>
+          )}
+        </div>
       </div>
     </Card>
   );
 };
+
+export default NFTCard;
