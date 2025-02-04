@@ -5,10 +5,17 @@ import ForgingLogicArtifact from "@artifacts/contracts/ForgingLogic.sol/ForgingL
 
 export function useTokenBalances() {
   const { address } = useAccount();
+  // Initialize with BigInt values
   const [balances, setBalances] = useState<number[]>(Array(7).fill(0));
 
-  const { data } = useReadContract({
-    address: process.env.FORGINGLOGIC_CONTRACT_ADDRESS as `0x${string}`,
+  // Log contract address and user address
+  useEffect(() => {
+    console.log("Contract Address:", process.env.NEXT_PUBLIC_FORGINGLOGIC_CONTRACT_ADDRESS);
+    console.log("User Address:", address);
+  }, [address]);
+
+  const { data, isError, isLoading } = useReadContract({
+    address: process.env.NEXT_PUBLIC_FORGINGLOGIC_CONTRACT_ADDRESS as `0x${string}`,
     abi: ForgingLogicArtifact.abi,
     functionName: "getAllTokenBalances",
     args: [address],
@@ -19,11 +26,18 @@ export function useTokenBalances() {
   });
 
   useEffect(() => {
-    if (data) {
-      setBalances(data as number[]);
-      console.log("token balances: ", data);
-    }
-  }, [data]);
+    if (data && Array.isArray(data)) {
+      const convertedBalances = data.map((balance: bigint) => Number(balance));
+      setBalances(convertedBalances);
+      console.log("token balances: ", convertedBalances);
+    } 
+  }, [data, isLoading, address]);
+
+  useEffect(() => {  
+    if (isError) {  
+      console.error("Error fetching token balances:", isError);
+    }  
+  }, [isError]);  
 
   return balances;
 } 

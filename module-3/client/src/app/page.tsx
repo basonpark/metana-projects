@@ -15,6 +15,7 @@ import { RetroGrid } from "@/components/ui/retro-grid";
 import { FlipText } from "@/components/ui/flip-text";
 import { ShimmerButton } from "@/components/ui/shimmer-button";
 import Collections from "@/components/Collections";
+import { ClientOnly } from "@/hooks/client-only";
 
 export default function Home() {
   const { chain } = useAccount();
@@ -35,12 +36,14 @@ export default function Home() {
           <AuroraText>Your Favorite ERC1155 Tokenizer</AuroraText>
           <TypingAnimation>Mint and forge your own tokens now</TypingAnimation>
         </h1>
-        <div className="flex items-center gap-3">
-          {chain && (
-            <Badge className="text-lg text-slate-300">{chain.name}</Badge>
-          )}
-          <ConnectButton />
-        </div>
+        <ClientOnly>
+          <div className="flex items-center gap-3">
+            {chain?.name && (
+              <Badge className="text-lg text-slate-300">{chain.name}</Badge>
+            )}
+            <ConnectButton />
+          </div>
+        </ClientOnly>
         <Collections />
         <TokenBalances />
         <div className="flex gap-16 flex-wrap justify-center items-start">

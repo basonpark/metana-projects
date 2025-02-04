@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useAccount, useWriteContract } from "wagmi";
-import TokenArtifact from "@artifacts/contracts/ForgingLogic.sol/ForgingLogic.json";
+import TokenArtifact from "@artifacts/contracts/Token.sol/Token.json";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -13,54 +13,87 @@ type Props = {};
 //allows users to mint tokens 0-2
 const MintToken = (props: Props) => {
   const { toast } = useToast();
-
-  useEffect(() => {
-    toast({
-      title: "Test toast",
-      description: "This is a test toast message",
-    });
-    console.log("toast");
-  }, []);
-
   const { address } = useAccount();
   const [tokenId, setTokenId] = useState(0);
 
-  const { writeContract, isError, isPending, isSuccess } = useWriteContract();
+  const { writeContract, isError, isPending, isSuccess, error } =
+    useWriteContract();
+
+  // Log contract details on mount
+  useEffect(() => {
+    console.log("Contract Details:", {
+      tokenContractAddress: process.env.NEXT_PUBLIC_TOKEN_CONTRACT_ADDRESS,
+      forgingLogicAddress:
+        process.env.NEXT_PUBLIC_FORGINGLOGIC_CONTRACT_ADDRESS,
+      abi: TokenArtifact.abi,
+    });
+  }, []);
+
+  // Log state changes
+  useEffect(() => {
+    console.log("Mint State:", {
+      isError,
+      isPending,
+      isSuccess,
+      error,
+      address,
+      tokenId,
+    });
+  }, [isError, isPending, isSuccess, error, address, tokenId]);
+
+  useEffect(() => {
+    if (isSuccess) {
+      console.log("Mint successful!");
+      toast({
+        title: "Minting successful",
+        description: "You have successfully minted tokens",
+      });
+    }
+  }, [isSuccess, toast]);
+
+  useEffect(() => {
+    if (isError) {
+      console.error("Mint error details:", error);
+      toast({
+        title: "Minting failed",
+        description: "Check console for details",
+      });
+    }
+  }, [isError, error, toast]);
 
   const handleMint = () => {
     console.log("Mint button clicked");
-    toast({
-      title: "Minting tokens",
-      description: "Please wait while we process your request",
-    });
     if (!address) {
+      console.log("No wallet address found");
       toast({
         title: "Please connect your wallet",
         description: "You must be connected to the network to mint tokens",
       });
       return;
     }
-    writeContract({
-      address: process.env.FORGINGLOGIC_CONTRACT_ADDRESS as `0x${string}`,
-      abi: TokenArtifact.abi,
+
+    // Add these logs to verify the mint parameters
+    console.log("Minting with params:", {
+      contractAddress: process.env.NEXT_PUBLIC_TOKEN_CONTRACT_ADDRESS,
+      tokenId,
+      amount: 1,
+      address,
       functionName: "mint",
-      args: [tokenId, 1],
+      abiFunction: TokenArtifact.abi.find((x) => x.name === "mint"),
     });
+
+    try {
+      writeContract({
+        address: process.env
+          .NEXT_PUBLIC_TOKEN_CONTRACT_ADDRESS as `0x${string}`,
+        abi: TokenArtifact.abi,
+        functionName: "mint",
+        args: [tokenId, 1],
+      });
+    } catch (e) {
+      console.error("Error calling writeContract:", e);
+    }
   };
-
-  if (isSuccess) {
-    toast({
-      title: "Minting sucessful",
-      description: "You have successfully minted tokens",
-    });
-  }
-
-  if (isError) {
-    toast({
-      title: "Minting failed",
-      description: "Check console for details",
-    });
-  }
 
   return (
     <Card className="w-[350px] shadow-lg hover:shadow-xl transition-shadow duration-200">
