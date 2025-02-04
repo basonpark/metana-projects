@@ -113,3 +113,16 @@ input:focus::placeholder {
   color: transparent;
   transition: color 0.2s ease;
 }
+
+@keyframes gridAnimation {
+  0% {
+    transform: translateX(0) translateY(0);
+  }
+  100% {
+    transform: translateX(-30%) translateY(-100%);
+  }
+}
+
+.animate-grid {
+  animation: gridAnimation 60s linear infinite;
+}

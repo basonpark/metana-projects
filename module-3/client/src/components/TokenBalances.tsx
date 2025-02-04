@@ -16,7 +16,7 @@ const TokenBalances = (props: Props) => {
     functionName: "getAllTokenBalances",
     args: [address],
     query: {
-      refetchInterval: 5000, // Refetch every 2 seconds
+      refetchInterval: 5000,
     },
   });
 
@@ -25,6 +25,8 @@ const TokenBalances = (props: Props) => {
       setBalances(data as number[]);
     }
   }, [data]);
+
+  const total = balances.reduce((acc, balance) => acc + balance, 0);
 
   return (
     <Card className="w-[350px] shadow-lg hover:shadow-xl transition-shadow duration-200">
@@ -42,6 +44,10 @@ const TokenBalances = (props: Props) => {
               <span className="font-bold">{balance.toString()}</span>
             </div>
           ))}
+          <div className="flex justify-between items-center gap-2 p-2 rounded-lg bg-secondary filter brightness-90">
+            <span className="font-medium">Total</span>
+            <span className="font-bold">{total.toString()}</span>
+          </div>
         </div>
       </CardContent>
     </Card>

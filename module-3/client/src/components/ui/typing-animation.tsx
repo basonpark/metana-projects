@@ -60,26 +60,36 @@ export function TypingAnimation({
   useEffect(() => {
     if (!started) return;
 
-    let i = 0;
-    const typingEffect = setInterval(() => {
-      if (i < children.length) {
-        setDisplayedText(children.substring(0, i + 1));
-        i++;
+    let timeoutId: NodeJS.Timeout;
+
+    function typeLetter(i: number) {
+      if (i <= children.length) {
+        // Type the text letter by letter
+        setDisplayedText(children.substring(0, i));
+        timeoutId = setTimeout(() => {
+          typeLetter(i + 1);
+        }, duration);
       } else {
-        clearInterval(typingEffect);
+        // After finishing, wait a bit, then clear and restart without flickering
+        timeoutId = setTimeout(() => {
+          setDisplayedText("\u00A0");
+          typeLetter(0);
+        }, 2500);
       }
-    }, duration);
+    }
+
+    typeLetter(0);
 
     return () => {
-      clearInterval(typingEffect);
+      clearTimeout(timeoutId);
     };
-  }, [children, duration, started]);
+  }, [children, duration, delay, started]);
 
   return (
     <MotionComponent
       ref={elementRef}
       className={cn(
-        "text-4xl font-bold leading-[5rem] tracking-[-0.02em]",
+        "text-4xl font-bold leading-[5rem] tracking-[-0.02em] min-h-[5rem]",
         className
       )}
       {...props}

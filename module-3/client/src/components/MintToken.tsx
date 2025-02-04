@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { RainbowButton } from "@/components/ui/rainbow-button";
 
 type Props = {};
 
@@ -65,9 +66,13 @@ const MintToken = (props: Props) => {
             placeholder="0"
           />
         </div>
-        <Button onClick={handleMint} disabled={isPending} className="w-full">
+        <RainbowButton
+          onClick={handleMint}
+          disabled={isPending}
+          className="w-full"
+        >
           {isPending ? "Minting..." : "Mint"}
-        </Button>
+        </RainbowButton>
       </CardContent>
     </Card>
   );
