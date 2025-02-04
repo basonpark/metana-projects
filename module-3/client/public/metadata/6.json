@@ -1,0 +1,18 @@
+{  
+    "name": "Boogie Wonder Tortoise",  
+        "image": "ipfs://bafybeib5j5w3kmrn674tor72e3it7yrsvbrfzglegq4neo4dr65xa5fcge",  
+    "attributes": [  
+        {  
+            "trait_type": "Background",  
+            "value": "Funky Town"  
+        },  
+        {  
+            "trait_type": "Rarity",  
+            "value": "Legendary"  
+        },  
+        {  
+            "trait_type": "Funk Score",  
+            "value": 9.7  
+        }  
+    ]  
+}  

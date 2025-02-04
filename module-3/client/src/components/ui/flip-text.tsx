@@ -24,7 +24,7 @@ export function FlipText({
 }: FlipTextProps) {
   return (
     <div className="flex justify-center space-x-1">
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="sync">
         {word.split("").map((char, i) => (
           <motion.span
             key={i}

@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { RetroGrid } from "@/components/ui/retro-grid";
 import { FlipText } from "@/components/ui/flip-text";
 import { ShimmerButton } from "@/components/ui/shimmer-button";
+import Collections from "@/components/Collections";
 
 export default function Home() {
   const { chain } = useAccount();
@@ -21,7 +22,7 @@ export default function Home() {
   return (
     <div
       className="flex flex-col items-center justify-center gap-16 mx-auto p-8 min-h-screen
-      bg-gradient-to-br from-slate-950 via-slate-800 to-slate-950
+      bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950
       animate-gradient-xy relative overflow-hidden
     "
     >
@@ -40,6 +41,7 @@ export default function Home() {
           )}
           <ConnectButton />
         </div>
+        <Collections />
         <TokenBalances />
         <div className="flex gap-16 flex-wrap justify-center items-start">
           <div className="flex flex-col gap-12">

@@ -1,9 +1,8 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAccount, useWriteContract } from "wagmi";
 import TokenArtifact from "@artifacts/contracts/ForgingLogic.sol/ForgingLogic.json";
-import { toast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -13,18 +12,39 @@ type Props = {};
 
 //allows users to mint tokens 0-2
 const MintToken = (props: Props) => {
+  const { toast } = useToast();
+
+  useEffect(() => {
+    toast({
+      title: "Test toast",
+      description: "This is a test toast message",
+    });
+    console.log("toast");
+  }, []);
+
   const { address } = useAccount();
   const [tokenId, setTokenId] = useState(0);
-  const [amount, setAmount] = useState(0);
 
   const { writeContract, isError, isPending, isSuccess } = useWriteContract();
 
   const handleMint = () => {
+    console.log("Mint button clicked");
+    toast({
+      title: "Minting tokens",
+      description: "Please wait while we process your request",
+    });
+    if (!address) {
+      toast({
+        title: "Please connect your wallet",
+        description: "You must be connected to the network to mint tokens",
+      });
+      return;
+    }
     writeContract({
       address: process.env.FORGINGLOGIC_CONTRACT_ADDRESS as `0x${string}`,
       abi: TokenArtifact.abi,
       functionName: "mint",
-      args: [tokenId, amount],
+      args: [tokenId, 1],
     });
   };
 
@@ -55,15 +75,6 @@ const MintToken = (props: Props) => {
             type="number"
             onChange={(e) => setTokenId(Number(e.target.value))}
             placeholder="0 - 2"
-          />
-        </div>
-        <div className="grid w-full items-center gap-1.5">
-          <Label htmlFor="amount">Amount</Label>
-          <Input
-            id="amount"
-            type="number"
-            onChange={(e) => setAmount(Number(e.target.value))}
-            placeholder="0"
           />
         </div>
         <RainbowButton

@@ -28,28 +28,6 @@ async function main() {
   
   await token.assignMinterRole(forgingLogic.target);  
   await token.assignBurnerRole(forgingLogic.target);  
-  
-  // Save contract addresses and ABIs
-  const fs = require('fs');
-  const path = require('path');
-  
-  // Create deployment info
-  const deployment = {
-    Token: token.target,
-    ForgingLogic: forgingLogic.target
-  };
-
-  // Save addresses
-  fs.writeFileSync(
-    path.join(__dirname, '../client/src/artifacts/contract-address.json'),
-    JSON.stringify(deployment, null, 2)
-  );
-
-  // Copy artifacts
-  const artifactsDir = path.join(__dirname, '../artifacts/contracts');
-  const clientArtifactsDir = path.join(__dirname, '../client/src/artifacts/contracts');
-
-  fs.cpSync(artifactsDir, clientArtifactsDir, { recursive: true });
 }
 
 //execute main function

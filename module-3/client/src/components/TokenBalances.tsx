@@ -1,32 +1,12 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import { useAccount, useReadContract } from "wagmi";
-import ForgingLogicArtifact from "@artifacts/contracts/ForgingLogic.sol/ForgingLogic.json";
+import React from "react";
+import { useTokenBalances } from "@/hooks/use-token-balances";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 type Props = {};
 
 const TokenBalances = (props: Props) => {
-  const { address } = useAccount();
-  const [balances, setBalances] = useState<number[]>(Array(7).fill(0));
-
-  const { data } = useReadContract({
-    address: process.env.FORGINGLOGIC_CONTRACT_ADDRESS as `0x${string}`,
-    abi: ForgingLogicArtifact.abi,
-    functionName: "getAllTokenBalances",
-    args: [address],
-    query: {
-      refetchInterval: 5000,
-    },
-  });
-
-  useEffect(() => {
-    if (data) {
-      setBalances(data as number[]);
-    }
-  }, [data]);
-
-  const total = balances.reduce((acc, balance) => acc + balance, 0);
+  const balances = useTokenBalances();
 
   return (
     <Card className="w-[350px] shadow-lg hover:shadow-xl transition-shadow duration-200">
@@ -46,7 +26,9 @@ const TokenBalances = (props: Props) => {
           ))}
           <div className="flex justify-between items-center gap-2 p-2 rounded-lg bg-secondary filter brightness-90">
             <span className="font-medium">Total</span>
-            <span className="font-bold">{total.toString()}</span>
+            <span className="font-bold">
+              {balances.reduce((acc, balance) => acc + balance, 0)}
+            </span>
           </div>
         </div>
       </CardContent>
