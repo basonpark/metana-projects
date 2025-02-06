@@ -1,3 +1,5 @@
+import { ethers } from "ethers";
+
 const hre = require("hardhat");
 async function main() {
 
@@ -13,8 +15,8 @@ async function main() {
 
   console.log("TokenFactory:", TokenFactory);  
   //deploy Token contract with a fixed gasLimit
-  console.log("Deploying Token contract...");
   const token = await TokenFactory.deploy();
+  console.log("Deploying Token contract...");
   await token.waitForDeployment();
 
 

@@ -47,6 +47,7 @@ export const NFTCard = ({ tokenId, count }: NFTCardProps) => {
 
   const baseUri = uri.substring(0, uri.lastIndexOf("/") + 1);
   const imageUrl = `${baseUri}${metadata.image}`;
+  //TODO: to be switched back to imgURL only after updated deployment
 
   const getAttributeValue = (
     traitType: string

@@ -19,6 +19,7 @@ import { ClientOnly } from "@/hooks/client-only";
 
 export default function Home() {
   const { chain } = useAccount();
+  const contractAddress = process.env.NEXT_PUBLIC_TOKEN_CONTRACT_ADDRESS;
   useChainCheck();
   return (
     <div
@@ -54,7 +55,12 @@ export default function Home() {
           <TradeToken />
         </div>
         <ShimmerButton
-          onClick={() => window.open("https://opensea.io/", "_blank")}
+          onClick={() =>
+            window.open(
+              `https://testnets.opensea.io/assets/sepolia/${contractAddress}`,
+              "_blank"
+            )
+          }
         >
           <div className="flex items-center gap-3 text-lg">
             <svg viewBox="0 0 90 90" fill="currentColor" className="w-6 h-6">
