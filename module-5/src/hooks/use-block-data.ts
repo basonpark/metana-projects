@@ -5,7 +5,23 @@ import { alchemy, EnrichedBlock, getEnrichedBlock } from "../lib/alchemy";
 export const useBlockData = (blockCount: number = 10) => {  
   const [blocks, setBlocks] = useState<EnrichedBlock[]>([]);  
   const [isConnected, setIsConnected] = useState(false);  
-  const [error, setError] = useState<string | null>(null);  
+  const [error, setError] = useState<string | null>(null);
+  const [latestBlockNumber, setLatestBlockNumber] = useState<number | null>(null);
+
+  // Load more historical blocks
+  const loadMoreBlocks = useCallback(async (endBlock: number) => {
+    try {
+      const numbers = Array.from(
+        { length: blockCount }, 
+        (_, i) => endBlock - blockCount + i
+      );
+      const moreBlocks = await Promise.all(numbers.map(getEnrichedBlock));
+      setBlocks(prev => [...prev, ...moreBlocks]);
+    } catch (err) {
+      console.error('Error loading more blocks:', err);
+      setError("Failed to load historical blocks");
+    }
+  }, [blockCount]);
 
   // Handle new blocks  
   const handleNewBlock = useCallback(async (blockNumber: number) => {  
@@ -14,14 +30,15 @@ export const useBlockData = (blockCount: number = 10) => {
       const newBlock = await getEnrichedBlock(blockNumber);  
       console.log('New block data:', newBlock);
       setBlocks(prev => {  
-        const updated = [...prev, newBlock].slice(-blockCount);  
+        const updated = [...prev, newBlock];
         return updated;  
-      });  
+      });
+      setLatestBlockNumber(blockNumber);
     } catch (err) {  
       console.error('Error in handleNewBlock:', err);
       setError("Failed to fetch new block data");  
     }  
-  }, [blockCount]);  
+  }, []);  
 
   // Initial load  
   useEffect(() => {  
@@ -29,12 +46,13 @@ export const useBlockData = (blockCount: number = 10) => {
       try {  
         console.log('Initializing block data...');
         const latest = await alchemy.core.getBlockNumber();  
+        setLatestBlockNumber(latest);
         console.log('Latest block number:', latest);
         const numbers = Array.from({ length: blockCount }, (_, i) => latest - i);  
         console.log('Fetching blocks:', numbers);
         const initialBlocks = await Promise.all(numbers.map(getEnrichedBlock));  
         console.log('Initial blocks:', initialBlocks);
-        setBlocks(initialBlocks.reverse());  
+        setBlocks(initialBlocks);  
         setIsConnected(true);  
       } catch (err) {  
         console.error('Error in initialize:', err);
@@ -55,7 +73,13 @@ export const useBlockData = (blockCount: number = 10) => {
     };
   }, [handleNewBlock]);  
 
-  return { blocks, isConnected, error };  
+  return { 
+    blocks, 
+    isConnected, 
+    error, 
+    latestBlockNumber,
+    loadMoreBlocks 
+  };  
 };  
 
 
