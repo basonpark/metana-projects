@@ -1,151 +1,79 @@
 "use client";
-import { useEffect, useState } from "react";
-import { Line } from "react-chartjs-2";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-} from "chart.js";
-import { BlockData, TokenTransfer, DashboardData } from "../types/blockchain";
-import { BlockchainService } from "../services/blockchain.service";
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend
-);
+import { useBlockData } from "../hooks/use-block-data";
+import { BlockChart } from "./block-chart";
+import { ClockIcon, SignalIcon } from "@heroicons/react/24/outline";
 
-const Dashboard = () => {
-  const [data, setData] = useState<DashboardData>({
-    blocks: [],
-    transfers: [],
-  });
-
-  useEffect(() => {
-    const blockchainService = new BlockchainService();
-    let mounted = true;
-
-    const updateDashboard = async (blockNumber: number) => {
-      if (!mounted) return;
-
-      try {
-        const [blockData, transferData] = await Promise.all([
-          blockchainService.getBlockData(blockNumber),
-          blockchainService.getTokenTransfers(blockNumber),
-        ]);
-
-        setData((prevData) => {
-          const newBlocks = [...prevData.blocks, blockData].slice(-10);
-          const newTransfers = [...prevData.transfers, transferData].slice(-10);
-          return { blocks: newBlocks, transfers: newTransfers };
-        });
-      } catch (error) {
-        console.error("Error updating dashboard:", error);
-      }
-    };
-
-    // Initial load of last 10 blocks
-    const loadInitialData = async () => {
-      const currentBlock = await blockchainService.provider.getBlockNumber();
-      for (let i = 0; i < 10; i++) {
-        await updateDashboard(currentBlock - 9 + i);
-      }
-    };
-
-    loadInitialData();
-    blockchainService.onNewBlock(updateDashboard);
-
-    return () => {
-      mounted = false;
-      blockchainService.disconnect();
-    };
-  }, []);
-
-  const chartOptions = {
-    responsive: true,
-    animation: {
-      duration: 0,
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-      },
-    },
-  };
+export const Dashboard = () => {
+  const { blocks, isConnected, error } = useBlockData();
 
   return (
-    <div className="p-4 space-y-8">
-      <h1 className="text-2xl font-bold">Ethereum Analytics Dashboard</h1>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {/* Token Transfer Volume Chart */}
-        <div className="p-4 bg-white rounded-lg shadow">
-          <h2 className="mb-4 text-lg font-semibold">Token Transfer Volume</h2>
-          <Line
-            data={{
-              labels: data.transfers.map((t) => t.blockNumber),
-              datasets: [
-                {
-                  label: "Transfer Volume",
-                  data: data.transfers.map((t) => t.totalVolume),
-                  borderColor: "rgb(75, 192, 192)",
-                  tension: 0.1,
-                },
-              ],
-            }}
-            options={chartOptions}
-          />
+    <div className="min-h-screen bg-gray-50 p-8">
+      {/* Header */}
+      <div className="mb-8 flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Ethereum Network Analytics
+          </h1>
+          {blocks[0] && (
+            <div className="mt-2 flex items-center text-gray-500">
+              <ClockIcon className="w-5 h-5 mr-1" />
+              <span className="text-sm">
+                Latest block: #{blocks[blocks.length - 1].number}
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* Base Fee Chart */}
-        <div className="p-4 bg-white rounded-lg shadow">
-          <h2 className="mb-4 text-lg font-semibold">Base Fee (Gwei)</h2>
-          <Line
-            data={{
-              labels: data.blocks.map((b) => b.number),
-              datasets: [
-                {
-                  label: "Base Fee",
-                  data: data.blocks.map((b) => b.baseFee),
-                  borderColor: "rgb(255, 99, 132)",
-                  tension: 0.1,
-                },
-              ],
-            }}
-            options={chartOptions}
+        {/* Connection Status */}
+        <div className="flex items-center space-x-2">
+          <SignalIcon
+            className={`w-6 h-6 ${
+              isConnected ? "text-green-500" : "text-yellow-500"
+            }`}
           />
+          <span className="text-sm">
+            {isConnected ? "Connected" : "Connecting..."}
+          </span>
         </div>
+      </div>
 
-        {/* Gas Usage Ratio Chart */}
-        <div className="p-4 bg-white rounded-lg shadow">
-          <h2 className="mb-4 text-lg font-semibold">Gas Usage Ratio (%)</h2>
-          <Line
-            data={{
-              labels: data.blocks.map((b) => b.number),
-              datasets: [
-                {
-                  label: "Gas Used/Limit Ratio",
-                  data: data.blocks.map((b) => b.gasUsedRatio),
-                  borderColor: "rgb(153, 102, 255)",
-                  tension: 0.1,
-                },
-              ],
-            }}
-            options={chartOptions}
-          />
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">
+          {error}
         </div>
+      )}
+
+      {/* Charts Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <BlockChart
+          title="ERC20 Transfer Volume"
+          dataKey="transferVolume"
+          color="#6366f1"
+          unit=" USDC"
+          formatter={(v) => v.toLocaleString()}
+          data={blocks}
+        />
+
+        <BlockChart
+          title="Base Fee"
+          dataKey="baseFeeGwei"
+          color="#10b981"
+          unit=" Gwei"
+          formatter={(v) => v.toFixed(2)}
+          data={blocks}
+        />
+
+        <BlockChart
+          title="Gas Usage Ratio"
+          dataKey="gasRatio"
+          color="#f59e0b"
+          unit="%"
+          formatter={(v) => v.toFixed(1)}
+          data={blocks}
+        />
       </div>
     </div>
   );
 };
-
-export default Dashboard;
