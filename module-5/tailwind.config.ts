@@ -101,6 +101,7 @@ export default {
   				'100%': {
   					'offset-distance': '100%'
   				}
+				
   			}
   		}
   	}

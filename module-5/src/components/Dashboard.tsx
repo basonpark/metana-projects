@@ -60,12 +60,13 @@ export const Dashboard = () => {
 
       {/* Welcome Message */}
       <div className="relative flex items-center justify-center mt-[120px] mb-16">
-        <div className="relative max-w-4xl">
+        <div className="relative max-w-5xl">
           <BorderBeam
-            colorFrom="#ffffff"
+            colorFrom="#FFD700"
             colorTo="#ffffff"
-            duration={10}
+            duration={15}
             size={300}
+            borderWidth={2}
           />
           <div className="flex flex-col items-center justify-center p-12">
             <div className="text-slate-100 text-4xl font-bold tracking-tight">

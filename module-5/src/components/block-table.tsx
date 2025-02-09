@@ -58,7 +58,7 @@ export const BlockTable = ({
                 Timestamp
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                USDC Volume
+                Volume
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
                 Base Fee (Gwei)

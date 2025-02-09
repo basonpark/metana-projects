@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from "react";  
 import { alchemy, EnrichedBlock, getEnrichedBlock } from "../lib/alchemy";  
 
-export const useBlockData = (blockCount: number = 10) => {  
+export const useBlockData = (tokenAddress: string, blockCount: number = 10) => {  
   const [blocks, setBlocks] = useState<EnrichedBlock[]>([]);  
   const [isConnected, setIsConnected] = useState(false);  
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +72,11 @@ export const useBlockData = (blockCount: number = 10) => {
       alchemy.ws.off("block", handleNewBlock);
     };
   }, [handleNewBlock]);  
+
+  // Update getEnrichedBlock to use the selected token address
+  const getBlockData = useCallback(async (blockNumber: number) => {
+    // ... use tokenAddress instead of hardcoded address
+  }, [tokenAddress]);
 
   return { 
     blocks, 
