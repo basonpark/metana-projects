@@ -13,9 +13,8 @@
     ]
   },
   "include": [
+    "test",
     "scripts",
-    "hardhat.config.ts",
-    "test"
+    "hardhat.config.ts"
   ]
-  
 }
