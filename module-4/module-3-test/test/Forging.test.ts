@@ -2,17 +2,16 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { Token, ForgingLogic } from "../typechain-types";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 
 describe("Token and ForgingLogic Contracts", function () {
     let token: Token;
     let forgingLogic: ForgingLogic;
-    let owner: SignerWithAddress;
-    let addr1: SignerWithAddress;
-    let addr2: SignerWithAddress;
+    let owner: HardhatEthersSigner;
+    let addr1: HardhatEthersSigner;
+    let addr2: HardhatEthersSigner;
     
     beforeEach(async function () {
-        // Get signers for testing
         [owner, addr1, addr2] = await ethers.getSigners();
         
         // Deploy Token contract
@@ -21,7 +20,7 @@ describe("Token and ForgingLogic Contracts", function () {
         
         // Deploy ForgingLogic contract
         const ForgingLogicFactory = await ethers.getContractFactory("ForgingLogic");
-        forgingLogic = await ForgingLogicFactory.deploy(await token.getAddress()) as ForgingLogic;
+        forgingLogic = await ForgingLogicFactory.deploy(await token.target) as ForgingLogic;
     });
 
     describe("Token Contract", function () {
@@ -44,7 +43,7 @@ describe("Token and ForgingLogic Contracts", function () {
                 await token.connect(addr1).mint(0, 1);
                 expect(await token.balanceOf(addr1.address, 0)).to.equal(1);
                 
-                await time.increase(60); // Wait cooldown
+                await time.increase(60); 
                 await token.connect(addr1).mint(1, 2);
                 expect(await token.balanceOf(addr1.address, 1)).to.equal(2);
             });
@@ -86,7 +85,6 @@ describe("Token and ForgingLogic Contracts", function () {
 
     describe("ForgingLogic Contract", function () {
         beforeEach(async function () {
-            // Setup initial tokens for testing
             await time.increase(60);
             await token.connect(addr1).mint(0, 1);
             await time.increase(60);
@@ -96,25 +94,36 @@ describe("Token and ForgingLogic Contracts", function () {
         });
 
         describe("Forging", function () {
-            it("Should allow forging of all valid combinations", async function () {
-                // Test forging token 3 (requires tokens 0 and 1)
+            it("Should forge token 3 (requires 0, 1)", async () => {
                 await forgingLogic.connect(addr1).forge(3);
                 expect(await token.balanceOf(addr1.address, 3)).to.equal(1);
                 expect(await token.balanceOf(addr1.address, 0)).to.equal(0);
                 expect(await token.balanceOf(addr1.address, 1)).to.equal(0);
-
-                // Mint more tokens for next test
-                await time.increase(60);
-                await token.connect(addr1).mint(0, 1);
-                await time.increase(60);
-                await token.connect(addr1).mint(2, 1);
-
-                // Test forging token 5 (requires tokens 0 and 2)
-                await forgingLogic.connect(addr1).forge(5);
-                expect(await token.balanceOf(addr1.address, 5)).to.equal(1);
             });
 
-            it("Should emit correct events when forging", async function () {
+            it("Should forget token 4 (requires 1, 2)", async () => {
+                await forgingLogic.connect(addr1).forge(4);
+                expect(await token.balanceOf(addr1.address, 4)).to.equal(1);
+                expect(await token.balanceOf(addr1.address, 1)).to.equal(0);
+                expect(await token.balanceOf(addr1.address, 2)).to.equal(0);
+            });
+
+            it("Should forge token 5 (requires 0, 2)", async () => {
+                await forgingLogic.connect(addr1).forge(5);
+                expect(await token.balanceOf(addr1.address, 5)).to.equal(1);
+                expect(await token.balanceOf(addr1.address, 0)).to.equal(0);
+                expect(await token.balanceOf(addr1.address, 2)).to.equal(0);
+            });
+
+            it("Should forge token 6 (requires 0, 1, 2)", async () => {
+                await forgingLogic.connect(addr1).forge(6);
+                expect(await token.balanceOf(addr1.address, 6)).to.equal(1);
+                expect(await token.balanceOf(addr1.address, 0)).to.equal(0);
+                expect(await token.balanceOf(addr1.address, 1)).to.equal(0);
+                expect(await token.balanceOf(addr1.address, 2)).to.equal(0);
+            });
+
+            it("Should emit correct events when forging", async () => {
                 await expect(forgingLogic.connect(addr1).forge(3))
                     .to.emit(forgingLogic, "Forged")
                     .withArgs(addr1.address, 3)
@@ -124,13 +133,13 @@ describe("Token and ForgingLogic Contracts", function () {
         });
 
         describe("Trading", function () {
-            it("Should allow trading between basic tokens", async function () {
+            it("Should allow trading between basic tokens", async () => {
                 await forgingLogic.connect(addr1).tradeToken(0, 1, 1);
                 expect(await token.balanceOf(addr1.address, 0)).to.equal(0);
                 expect(await token.balanceOf(addr1.address, 1)).to.equal(2);
             });
 
-            it("Should prevent invalid trades", async function () {
+            it("Should prevent invalid trades", async () => {
                 await expect(
                     forgingLogic.connect(addr1).tradeToken(0, 3, 1)
                 ).to.be.revertedWith("Only tokens 0-2 can be traded");
@@ -140,7 +149,13 @@ describe("Token and ForgingLogic Contracts", function () {
                 ).to.be.revertedWith("Cannot trade the same token");
             });
 
-            it("Should emit correct events when trading", async function () {
+            it("Should handle reverse trades", async () => {
+                await forgingLogic.connect(addr1).tradeToken(1, 0, 1);
+                expect(await token.balanceOf(addr1.address, 0)).to.equal(1);
+                expect(await token.balanceOf(addr1.address, 1)).to.equal(0);
+            });
+
+            it("Should emit correct events when trading", async () => {
                 await expect(forgingLogic.connect(addr1).tradeToken(0, 1, 1))
                     .to.emit(forgingLogic, "Traded")
                     .withArgs(addr1.address, 0, 1, 1);
@@ -148,29 +163,52 @@ describe("Token and ForgingLogic Contracts", function () {
         });
 
         describe("Admin Functions", function () {
-            it("Should allow admin to update forge token address", async function () {
+
+            let newToken: Token; 
+            beforeEach(async () => {
                 const TokenFactory = await ethers.getContractFactory("Token");
-                const newToken = await TokenFactory.deploy();
-                await forgingLogic.setForgeTokenAddress(await newToken.getAddress());
-                expect(await forgingLogic.forgeToken()).to.equal(await newToken.getAddress());
+                newToken = (await TokenFactory.deploy()) as Token;
+                await newToken.waitForDeployment();
+            })
+
+            it("Should allow admin to update forge token address", async  () => {
+                await forgingLogic.setForgeTokenAddress(await newToken.target);
+                expect(await forgingLogic.forgeToken()).to.equal(await newToken.target);
             });
 
-            it("Should prevent non-admin from updating forge token address", async function () {
-                const TokenFactory = await ethers.getContractFactory("Token");
-                const newToken = await TokenFactory.deploy();
+            it("Should maintain roles when changing token", async () => {   
+                await forgingLogic.setForgeTokenAddress(await newToken.target);
+                expect(await newToken.hasRole(await newToken.MINTER_ROLE(), await forgingLogic.target)).to.be.true;
+                expect(await newToken.hasRole(await newToken.BURNER_ROLE(), await forgingLogic.target)).to.be.true;
+            }); 
+
+            it("Should prevent non-admin from updating forge token address", async () => {
                 await expect(
-                    forgingLogic.connect(addr1).setForgeTokenAddress(await newToken.getAddress())
+                    forgingLogic.connect(addr1).setForgeTokenAddress(await newToken.target)
                 ).to.be.reverted;
             });
+
+            it("Should prevent unauthorized forgeMint", async () => {
+                await expect(
+                    token.connect(addr1).forgeMint(addr1.address, 3, 1)
+                ).to.be.reverted;
+            });
+
+            it("Should prevent unauthorized forgeBurn", async () => {
+                await expect(
+                    token.connect(addr1).forgeBurn(addr1.address, 0, 1)
+                ).to.be.reverted;
+            });
+            
+            
         });
 
         describe("Utility Functions", function () {
-            it("Should return correct token balances", async function () {
+            it("Should return correct token balances", async () => {
                 const balances = await forgingLogic.getAllTokenBalances(addr1.address);
-                expect(balances[0]).to.equal(1); // Token 0
-                expect(balances[1]).to.equal(1); // Token 1
-                expect(balances[2]).to.equal(1); // Token 2
-                expect(balances[3]).to.equal(0); // Token 3
+                for (let i = 0; i < 7; i++) {
+                    expect(balances[i]).to.equal(i < 3 ? 1 : 0);
+                }
             });
         });
     });

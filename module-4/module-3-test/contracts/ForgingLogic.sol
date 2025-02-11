@@ -31,8 +31,10 @@ contract ForgingLogic is AccessControl {
     }
 
     //only owner can set the forge token address
-    function setForgeTokenAddress(address _tokenAddres) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        forgeToken = Token(_tokenAddres);
+    function setForgeTokenAddress(address _tokenAddress) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        forgeToken = Token(_tokenAddress);
+        forgeToken.assignMinterRole(address(this));
+        forgeToken.assignBurnerRole(address(this));
     }
 
     //function to forge tokens 3-6
