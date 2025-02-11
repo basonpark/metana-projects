@@ -12,7 +12,7 @@ describe("Token and ForgingLogic Contracts", function () {
     let addr2: HardhatEthersSigner;
     
     beforeEach(async function () {
-        [owner, addr1, addr2] = await ethers.getSigners();
+        [owner, addr1, addr2] = (await ethers.getSigners() as unknown) as HardhatEthersSigner[];
         
         // Deploy Token contract
         const TokenFactory = await ethers.getContractFactory("Token");
@@ -35,6 +35,11 @@ describe("Token and ForgingLogic Contracts", function () {
                 await token.connect(addr1).mint(0, 1);
                 const lastMinted = await token.lastMinted(addr1.address);
                 expect(lastMinted).to.be.gt(0);
+            });
+
+            it("Should support ERC1155 and AccessControl interfaces", async function () {
+                expect(await token.supportsInterface(ethers.id("ERC1155").toString())).to.be.true;
+                expect(await token.supportsInterface(ethers.id("AccessControl").toString())).to.be.true;
             });
         });
 
@@ -129,6 +134,19 @@ describe("Token and ForgingLogic Contracts", function () {
                     .withArgs(addr1.address, 3)
                     .and.to.emit(token, "Burned")
                     .and.to.emit(token, "Minted");
+            });
+
+            it("Should revert forging with invalid token ID", async () => {
+                await expect(
+                    forgingLogic.connect(addr1).forge(2)
+                ).to.be.revertedWith("You can only forge tokens 3-6");
+            });
+
+            it("Should revert forging with insufficient balance", async () => {
+                await forgingLogic.connect(addr1).forge(3);
+                await expect(
+                    forgingLogic.connect(addr1).forge(3)
+                ).to.be.revertedWith("Insufficient balance of token to forge");
             });
         });
 
