@@ -17,10 +17,22 @@ describe("Token and ForgingLogic Contracts", function () {
         // Deploy Token contract
         const TokenFactory = await ethers.getContractFactory("Token");
         token = await TokenFactory.deploy() as Token;
-        
-        // Deploy ForgingLogic contract
+        await token.waitForDeployment();
+
+        //assign minter and burner roles to owner
+        await token.assignMinterRole(owner.address);  
+        await token.assignBurnerRole(owner.address);  
+
+        //deploy ForgingLogic contract
         const ForgingLogicFactory = await ethers.getContractFactory("ForgingLogic");
         forgingLogic = await ForgingLogicFactory.deploy(await token.target) as ForgingLogic;
+        await forgingLogic.waitForDeployment();
+
+        //assign minter and burner roles to forgingLogic
+        await token.assignMinterRole(await forgingLogic.target);  
+        await token.assignBurnerRole(await forgingLogic.target);  
+
+        
     });
 
     describe("Token Contract", function () {
