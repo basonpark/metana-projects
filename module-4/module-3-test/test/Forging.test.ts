@@ -31,7 +31,7 @@ describe("Token and ForgingLogic Contracts", function () {
         //assign minter and burner roles to forgingLogic
         await token.assignMinterRole(await forgingLogic.target);  
         await token.assignBurnerRole(await forgingLogic.target);  
-
+        //TODO: UNDERSTAND THIS 
         
     });
 
