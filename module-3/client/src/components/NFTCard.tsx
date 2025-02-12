@@ -47,8 +47,8 @@ export const NFTCard = ({ tokenId, count }: NFTCardProps) => {
     return <div>Loading...</div>;
   }
 
-  const baseUri = uri.substring(0, uri.lastIndexOf("/") + 1);
-  const imageUrl = `${baseUri}${metadata.image}`;
+  // const baseUri = uri.substring(0, uri.lastIndexOf("/") + 1);
+  // const imageUrl = `${baseUri}${metadata.image}`;
   //TODO: to be switched back to imgURL only after updated deployment
 
   const getAttributeValue = (
@@ -65,7 +65,7 @@ export const NFTCard = ({ tokenId, count }: NFTCardProps) => {
       {metadata.image && (
         <div className="relative w-full h-[280px]">
           <img
-            src={imageUrl}
+            src={metadata.image}
             alt={metadata.name || `Token ${tokenId}`}
             className="w-full h-full object-cover"
           />

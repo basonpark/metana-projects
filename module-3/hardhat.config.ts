@@ -15,6 +15,14 @@ const config: HardhatUserConfig = {
           : [],
     },
   },
+  etherscan: {
+    apiKey: {
+      sepolia: process.env.ETHERSCAN_API_KEY!,
+    },
+  },
+  sourcify: {
+    enabled: false,
+  },
 };
 
 export default config;
