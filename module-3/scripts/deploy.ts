@@ -1,4 +1,4 @@
-import { ethers } from "ethers";
+import { ethers } from "hardhat";
 
 const hre = require("hardhat");
 async function main() {

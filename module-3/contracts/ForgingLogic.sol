@@ -15,11 +15,12 @@ contract ForgingLogic is AccessControl {
     event Traded(address indexed from, uint256 indexed fromTokenId, uint256 toTokenId, uint256 amount);
 
     constructor(address _tokenAddress) {
-        require(_tokenAddress != address(0), "Invalid token address"); 
         forgeToken = Token(_tokenAddress);
         owner = msg.sender;
         setRequiredTokens();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        forgeToken.assignMinterRole(address(this));
+        forgeToken.assignBurnerRole(address(this));
     }
 
     function setRequiredTokens() private {
@@ -30,8 +31,10 @@ contract ForgingLogic is AccessControl {
     }
 
     //only owner can set the forge token address
-    function setForgeTokenAddress(address _tokenAddres) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        forgeToken = Token(_tokenAddres);
+    function setForgeTokenAddress(address _tokenAddress) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        forgeToken = Token(_tokenAddress);
+        forgeToken.assignMinterRole(address(this));
+        forgeToken.assignBurnerRole(address(this));
     }
 
     //function to forge tokens 3-6
@@ -39,34 +42,25 @@ contract ForgingLogic is AccessControl {
         address user = msg.sender;
         require(tokenId >= forgeToken.TOKEN_3() && tokenId <= forgeToken.TOKEN_6(), "You can only forge tokens 3-6");
     
-        uint256[] memory tokenIds = requiredTokens[tokenId];
-        uint256[] memory amounts = new uint256[](tokenIds.length);
-        
-        // Fill amounts array with 1s since we need 1 of each token
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            require(forgeToken.balanceOf(user, tokenIds[i]) >= 1, "Insufficient balance of token to forge");
-            amounts[i] = 1;  // Each recipe requires 1 of each token
+        // burn required tokens
+        for (uint256 i = 0; i < requiredTokens[tokenId].length; i++) {
+            require(forgeToken.balanceOf(user, requiredTokens[tokenId][i]) >= 1, "Insufficient balance of token to forge");
+            forgeToken.forgeBurn(user, requiredTokens[tokenId][i], 1);
         }
-        
-        // Burns multiple tokens in one transaction
-        forgeToken.burnBatch(user, tokenIds, amounts);
-        
-        // Mint new token
+        // mint new token
         forgeToken.forgeMint(user, tokenId, 1);
         emit Forged(user, tokenId);
     }
 
     //function to trade any token for tokens 0-2
     function tradeToken(uint256 fromTokenId, uint256 toTokenId, uint256 amount) public {
-        address user = msg.sender;  
-
         require(fromTokenId != toTokenId, "Cannot trade the same token");
         require(toTokenId <= 2 && fromTokenId <= 2, "Only tokens 0-2 can be traded");
-        require(forgeToken.balanceOf(user, fromTokenId) >= amount, "Insufficient balance of token to trade");
+        require(forgeToken.balanceOf(msg.sender, fromTokenId) >= amount, "Insufficient balance of token to trade");
 
-        forgeToken.forgeBurn(user, fromTokenId, amount);
-        forgeToken.forgeMint(user, toTokenId, amount);
-        emit Traded(user, fromTokenId, toTokenId, amount);
+        forgeToken.forgeBurn(msg.sender, fromTokenId, amount);
+        forgeToken.forgeMint(msg.sender, toTokenId, amount);
+        emit Traded(msg.sender, fromTokenId, toTokenId, amount);
     }
 
     //function to get all token balances for an address
