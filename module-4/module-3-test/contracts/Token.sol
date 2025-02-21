@@ -22,7 +22,7 @@ contract Token is ERC1155, AccessControl {
 
     uint256 public cooldown = 1 minutes;
 
-    string public baseUri = "https://token.com/api/";
+    string public baseUri = "bafybeidldvu4go62jrup4deb7uppetbyvlqlyq33u7uyvpdvnesoj2vxky/";
 
     //mapping to track last minted time
     mapping(address => uint256) public lastMinted;
@@ -73,4 +73,8 @@ contract Token is ERC1155, AccessControl {
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC1155, AccessControl) returns (bool) {  
         return super.supportsInterface(interfaceId);  
     }  
+
+    function burnBatch(address account, uint256[] memory ids, uint256[] memory amounts) external onlyRole(BURNER_ROLE) {
+        _burnBatch(account, ids, amounts);
+    }
 }

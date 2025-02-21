@@ -23,6 +23,7 @@ type NFTCardProps = {
 };
 
 export const NFTCard = ({ tokenId, count }: NFTCardProps) => {
+  const IPFS_GATEWAY = "https://ipfs.io/ipfs/";
   const { uri, isLoading } = useTokenURI(tokenId);
   const [metadata, setMetadata] = React.useState<NFTMetadata | null>(null);
 
@@ -31,10 +32,12 @@ export const NFTCard = ({ tokenId, count }: NFTCardProps) => {
     if (uri) {
       const fetchMetadata = async () => {
         try {
-          const res = await fetch(uri);
+          const fullUri = `${IPFS_GATEWAY}${uri}`;
+          console.log("Full URI:", fullUri);
+          const res = await fetch(fullUri);
           const data = await res.json();
           setMetadata(data);
-          console.log("Metadata:", data);
+          console.log("Metadata:", metadata);
         } catch (error) {
           console.error("Error fetching metadata:", error);
         }
@@ -44,11 +47,8 @@ export const NFTCard = ({ tokenId, count }: NFTCardProps) => {
   }, [uri]);
 
   if (isLoading || !metadata) {
-    return <div>Loading...</div>;
+    return <div className="text-slate-400 text-center">Loading...</div>;
   }
-
-  const baseUri = uri.substring(0, uri.lastIndexOf("/") + 1);
-  const imageUrl = `${baseUri}${metadata.image}`;
 
   const getAttributeValue = (
     traitType: string
@@ -64,7 +64,7 @@ export const NFTCard = ({ tokenId, count }: NFTCardProps) => {
       {metadata.image && (
         <div className="relative w-full h-[280px]">
           <img
-            src={imageUrl}
+            src={metadata.image}
             alt={metadata.name || `Token ${tokenId}`}
             className="w-full h-full object-cover"
           />
