@@ -19,8 +19,6 @@ contract ForgingLogic is AccessControl {
         owner = msg.sender;
         setRequiredTokens();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        forgeToken.assignMinterRole(address(this));
-        forgeToken.assignBurnerRole(address(this));
     }
 
     function setRequiredTokens() private {
@@ -72,6 +70,11 @@ contract ForgingLogic is AccessControl {
         return balances;
     }
 
+    // Add initialization function
+    function initialize() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        forgeToken.assignMinterRole(address(this));
+        forgeToken.assignBurnerRole(address(this));
+    }
 
 }
 
