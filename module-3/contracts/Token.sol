@@ -1,9 +1,15 @@
+// SPDX-License-Identifier: MIT  
 pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import '@openzeppelin/contracts/token/access/Ownable.sol';
+import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
-contract Token is ERC1155, Ownable {
+contract Token is ERC1155, AccessControl {
+
+    //roles
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
     //constants
     uint public constant TOKEN_0 = 0;
@@ -16,28 +22,18 @@ contract Token is ERC1155, Ownable {
 
     uint256 public cooldown = 1 minutes;
 
-    string public URI = "https://token.com/api/{id}.json";
-    
+    string public baseUri = "bafybeidldvu4go62jrup4deb7uppetbyvlqlyq33u7uyvpdvnesoj2vxky/";
 
     //mapping to track last minted time
     mapping(address => uint256) public lastMinted;
-
-    // Mapping from token ID to array of required token IDs for minting
-    mapping(uint256 => uint256[]) public requiredTokens;
-
-
-    // Mapping to track authorized forging contracts
-    mapping(address => bool) public authorizedForgers;
-
-    // Mapping from address to array of token balances
-    mapping(address => uint256[]) public userTokenBalances;
     
+    //events for tracking transactions
+    event Minted(address indexed to, uint256 indexed tokenId, uint256 amount);
+    event Burned(address indexed from, uint256 indexed tokenId, uint256 amount);
 
     //constructor sets URI for token metadata
-    constructor() ERC1155(URI) {
-
-        // Initialize arrays
-        userTokenBalances[msg.sender] = new uint256[](7);
+    constructor() ERC1155("")  {
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     //function to freely mint tokens 0-2 
@@ -46,57 +42,39 @@ contract Token is ERC1155, Ownable {
         require(block.timestamp >= lastMinted[msg.sender] + cooldown, "Mint cooldown of 1 minute must be met.");
         lastMinted[msg.sender] = block.timestamp;
         _mint(msg.sender, tokenId, amount, "");
-        userTokenBalances[msg.sender][tokenId] += amount;
+        emit Minted(msg.sender, tokenId, amount);
     }
 
-    //function to burn tokens 3-6  
-    function burn(uint256 tokenId, uint256 amount) public {
-        require(tokenId >= TOKEN_3, "Only tokens 3-6 can be burned.");
-        _burn(msg.sender, tokenId, amount);
-        userTokenBalances[msg.sender][tokenId] -= amount;
-    }
-
-    function setApprovalForAll(address operator, bool approved) public {
-        _setApprovalForAll(msg.sender, operator, approved);
-    }
-
-    function setURI(string memory newURI) public onlyOwner {
-        URI = newURI;
-        _setURI(newURI);
-    }
-
-    function _setURI(string memory newURI) internal override {
-        URI = newURI;
-    }
-
-    // Function to get required tokens for a specific token ID
-    function getRequiredTokens(uint256 tokenId) public view returns (uint256[] memory) {
-        return requiredTokens[tokenId];
+    function uri(uint256 tokenId) public view override returns (string memory) { 
+        return string(abi.encodePacked(baseUri, Strings.toString(tokenId), ".json"));
     }
 
     // Special mint helper function for forging
-    function forgeMint(address to, uint256 tokenId, uint256 amount) external {
+    function forgeMint(address to, uint256 tokenId, uint256 amount) external onlyRole(MINTER_ROLE) {
         _mint(to, tokenId, amount, "");
-        userTokenBalances[to][tokenId] += amount;
+        emit Minted(to, tokenId, amount);
     }
 
     // Special burn helper function for forging
-    function forgeBurn(address from, uint256 tokenId, uint256 amount) external {
+    function forgeBurn(address from, uint256 tokenId, uint256 amount) external onlyRole(BURNER_ROLE) {
         _burn(from, tokenId, amount);
-        userTokenBalances[from][tokenId] -= amount;
-    }
-    
-    // Gets all token balances for an address
-    function getAllTokenBalances(address user) public view returns (uint256[] memory) {
-        if (userTokenBalances[user].length == 0) {
-            uint256[] memory emptyBalances = new uint256[](7);
-            return emptyBalances;
-        }
-        return userTokenBalances[user];
+        emit Burned(from, tokenId, amount);
     }
 
-    function setTokenRequirements(uint256 tokenId, uint256[] memory requirements) external onlyOwner {
-        requiredTokens[tokenId] = requirements;
-    }
+    // Convenience functions for role assignment  
+    function assignMinterRole(address account) public onlyRole(DEFAULT_ADMIN_ROLE) {  
+        grantRole(MINTER_ROLE, account);  
+    }  
 
+    function assignBurnerRole(address account) public onlyRole(DEFAULT_ADMIN_ROLE) {  
+        grantRole(BURNER_ROLE, account);  
+    }   
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC1155, AccessControl) returns (bool) {  
+        return super.supportsInterface(interfaceId);  
+    }  
+
+    function burnBatch(address account, uint256[] memory ids, uint256[] memory amounts) external onlyRole(BURNER_ROLE) {
+        _burnBatch(account, ids, amounts);
+    }
 }
