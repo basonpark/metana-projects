@@ -69,13 +69,6 @@ contract ForgingLogic is AccessControl {
         }
         return balances;
     }
-
-    // Add initialization function
-    function initialize() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        forgeToken.assignMinterRole(address(this));
-        forgeToken.assignBurnerRole(address(this));
-    }
-
 }
 
 
