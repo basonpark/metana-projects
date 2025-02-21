@@ -3,20 +3,20 @@ pragma solidity ^0.8.28;
 
 import "./Token.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract ForgingLogic is AccessControl {
+contract ForgingLogic is AccessControl, Ownable {
 
     Token public forgeToken;
-    address public owner;
     mapping(uint256 => uint256[]) private requiredTokens;
 
     //events for tracking transactions
     event Forged(address indexed to, uint256 indexed tokenId);
     event Traded(address indexed from, uint256 indexed fromTokenId, uint256 toTokenId, uint256 amount);
+    event ForgeTokenUpdated(address oldToken, address newToken);
 
-    constructor(address _tokenAddress) {
+    constructor(address _tokenAddress) Ownable(msg.sender) {
         forgeToken = Token(_tokenAddress);
-        owner = msg.sender;
         setRequiredTokens();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
