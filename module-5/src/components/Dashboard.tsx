@@ -19,9 +19,9 @@ export const Dashboard = () => {
   const handleLoadMore = useCallback(async () => {
     if (blocks.length > 0) {
       const oldestBlock = Math.min(...blocks.map((b) => b.number));
-      await loadMoreBlocks(oldestBlock - 1);
+      await loadMoreBlocks(oldestBlock - 1, selectedToken.address);
     }
-  }, [blocks, loadMoreBlocks]);
+  }, [blocks, loadMoreBlocks, selectedToken.address]);
 
   return (
     <div className="min-h-screen">

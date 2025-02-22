@@ -9,25 +9,25 @@ export const useBlockData = (tokenAddress: string, blockCount: number = 10) => {
   const [latestBlockNumber, setLatestBlockNumber] = useState<number | null>(null);
 
   // Load more historical blocks
-  const loadMoreBlocks = useCallback(async (endBlock: number) => {
+  const loadMoreBlocks = useCallback(async (endBlock: number, tokenAddress: string) => {
     try {
       const numbers = Array.from(
         { length: blockCount }, 
         (_, i) => endBlock - blockCount + i
       );
-      const moreBlocks = await Promise.all(numbers.map(getEnrichedBlock));
+      const moreBlocks = await Promise.all(numbers.map((blockNumber) => getEnrichedBlock(blockNumber, tokenAddress)));
       setBlocks(prev => [...prev, ...moreBlocks]);
     } catch (err) {
       console.error('Error loading more blocks:', err);
       setError("Failed to load historical blocks");
     }
-  }, [blockCount]);
+  }, [blockCount, tokenAddress]);
 
   // Handle new blocks  
-  const handleNewBlock = useCallback(async (blockNumber: number) => {  
+  const handleNewBlock = useCallback(async (blockNumber: number, tokenAddress: string) => {  
     try {  
       console.log('Handling new block:', blockNumber);
-      const newBlock = await getEnrichedBlock(blockNumber);  
+      const newBlock = await getEnrichedBlock(blockNumber, tokenAddress);  
       console.log('New block data:', newBlock);
       setBlocks(prev => {  
         const updated = [...prev, newBlock];
@@ -38,7 +38,7 @@ export const useBlockData = (tokenAddress: string, blockCount: number = 10) => {
       console.error('Error in handleNewBlock:', err);
       setError("Failed to fetch new block data");  
     }  
-  }, []);  
+  }, [tokenAddress]);  
 
   // Initial load  
   useEffect(() => {  
@@ -50,7 +50,7 @@ export const useBlockData = (tokenAddress: string, blockCount: number = 10) => {
         console.log('Latest block number:', latest);
         const numbers = Array.from({ length: blockCount }, (_, i) => latest - i);  
         console.log('Fetching blocks:', numbers);
-        const initialBlocks = await Promise.all(numbers.map(getEnrichedBlock));  
+        const initialBlocks = await Promise.all(numbers.map((blockNumber) => getEnrichedBlock(blockNumber, tokenAddress)));  
         console.log('Initial blocks:', initialBlocks);
         setBlocks(initialBlocks);  
         setIsConnected(true);  
@@ -61,17 +61,18 @@ export const useBlockData = (tokenAddress: string, blockCount: number = 10) => {
     };  
 
     initialize();  
-  }, [blockCount]);  
+  }, [blockCount, tokenAddress]);  
 
   // WebSocket subscription  
   useEffect(() => {  
     console.log('Setting up WebSocket subscription...');
-    alchemy.ws.on("block", handleNewBlock);
+    const handler = (blockNumber: number) => handleNewBlock(blockNumber, tokenAddress);
+    alchemy.ws.on("block", handler);
     return () => {
       console.log('Cleaning up WebSocket subscription...');
-      alchemy.ws.off("block", handleNewBlock);
+      alchemy.ws.off("block", handler);
     };
-  }, [handleNewBlock]);  
+  }, [handleNewBlock, tokenAddress]);  
 
   // Update getEnrichedBlock to use the selected token address
   const getBlockData = useCallback(async (blockNumber: number) => {

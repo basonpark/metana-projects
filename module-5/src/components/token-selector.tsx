@@ -1,6 +1,6 @@
 "use client";
 
-import { Token } from "@/lib/tokens";
+import { Token, token } from "@/lib/tokens";
 import Image from "next/image";
 
 export const TokenSelector = ({
@@ -15,7 +15,7 @@ export const TokenSelector = ({
   <div className="flex items-center space-x-4 mb-4">
     <h2 className="text-xl font-semibold text-slate-100">Recent Blocks</h2>
     <div className="flex items-center space-x-2 bg-slate-800/50 backdrop-blur-sm rounded-lg p-1">
-      {tokens.map((token) => (
+      {tokens.map((token: Token) => (
         <button
           key={token.address}
           onClick={() => onSelect(token)}

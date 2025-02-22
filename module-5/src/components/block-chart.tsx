@@ -37,7 +37,15 @@ export const BlockChart = ({
     </div>
     <div className="h-64">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data}>
+        <LineChart
+          data={data}
+          margin={{
+            top: 20,
+            right: 30,
+            bottom: 30,
+            left: 30,
+          }}
+        >
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
           <XAxis
             dataKey="number"
@@ -45,21 +53,26 @@ export const BlockChart = ({
             label={{
               value: "Block Number",
               position: "insideBottom",
-              offset: -10,
+              offset: -20,
               fill: "#cbd5e1",
             }}
             stroke="#475569"
           />
           <YAxis
-            width={80}
+            width={title.length > 20 ? 120 : 80}
             tickFormatter={(v) => `${formatter(v)}${unit}`}
             tick={{ fontSize: 12, fill: "#cbd5e1" }}
             label={{
               value: title,
               angle: -90,
               position: "insideLeft",
-              offset: 10,
+              offset: -20,
+              dy: title.length < 10 ? 60 : 90,
               fill: "#cbd5e1",
+              textAnchor: "middle",
+              style: {
+                fontSize: title.length > 20 ? 12 : 15,
+              },
             }}
             stroke="#475569"
           />
