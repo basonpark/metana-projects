@@ -3,20 +3,20 @@ pragma solidity ^0.8.28;
 
 import "./Token.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract ForgingLogic is AccessControl, Ownable {
+contract ForgingLogic is AccessControl {
 
     Token public forgeToken;
+    address public owner;
     mapping(uint256 => uint256[]) private requiredTokens;
 
     //events for tracking transactions
     event Forged(address indexed to, uint256 indexed tokenId);
     event Traded(address indexed from, uint256 indexed fromTokenId, uint256 toTokenId, uint256 amount);
-    event ForgeTokenUpdated(address oldToken, address newToken);
 
-    constructor(address _tokenAddress) Ownable(msg.sender) {
+    constructor(address _tokenAddress) {
         forgeToken = Token(_tokenAddress);
+        owner = msg.sender;
         setRequiredTokens();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
@@ -70,8 +70,3 @@ contract ForgingLogic is AccessControl, Ownable {
         return balances;
     }
 }
-
-
-//Notes:
-//uint256[] cannot be passed in as parameter to function (requiredTokens); only uint8[]?
-//for mapping(uint256 => uint256[]) requiredTokens, set function in Token.sol not working

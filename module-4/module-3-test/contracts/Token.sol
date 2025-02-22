@@ -32,10 +32,8 @@ contract Token is ERC1155, AccessControl {
     event Burned(address indexed from, uint256 indexed tokenId, uint256 amount);
 
     //constructor sets URI for token metadata
-    constructor() ERC1155("") {
+    constructor() ERC1155("")  {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(MINTER_ROLE, msg.sender);
-        _grantRole(BURNER_ROLE, msg.sender);
     }
 
     //function to freely mint tokens 0-2 
@@ -75,8 +73,4 @@ contract Token is ERC1155, AccessControl {
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC1155, AccessControl) returns (bool) {  
         return super.supportsInterface(interfaceId);  
     }  
-
-    function burnBatch(address account, uint256[] memory ids, uint256[] memory amounts) external onlyRole(BURNER_ROLE) {
-        _burnBatch(account, ids, amounts);
-    }
 }
