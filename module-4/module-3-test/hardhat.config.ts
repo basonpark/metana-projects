@@ -10,8 +10,8 @@ dotenv.config();
 const networks = process.env.COVERAGE 
   ? {}
   : {
-      polygonAmoy: {
-        url: process.env.POLYGON_RPC_URL || "",
+      sepolia: {
+        url: process.env.SEPOLIA_RPC_URL || "",
         accounts:
           process.env.METAMASK_PRIVATE_KEY !== undefined
             ? [process.env.METAMASK_PRIVATE_KEY]

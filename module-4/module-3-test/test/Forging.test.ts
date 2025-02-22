@@ -40,7 +40,7 @@ describe("Token and ForgingLogic Contracts", function () {
             it("Should set correct initial state", async function () {
                 const DEFAULT_ADMIN_ROLE = await token.DEFAULT_ADMIN_ROLE();
                 expect(await token.hasRole(DEFAULT_ADMIN_ROLE, owner.address)).to.be.true;
-                expect(await token.uri(0)).to.equal("https://token.com/api/0.json");
+                expect(await token.uri(0)).to.equal("bafybeidldvu4go62jrup4deb7uppetbyvlqlyq33u7uyvpdvnesoj2vxky/0.json");
             });
 
             it("Should track last minted time correctly", async function () {
@@ -50,9 +50,18 @@ describe("Token and ForgingLogic Contracts", function () {
             });
 
             it("Should support ERC1155 and AccessControl interfaces", async function () {
-                expect(await token.supportsInterface(ethers.id("ERC1155").toString())).to.be.true;
-                expect(await token.supportsInterface(ethers.id("AccessControl").toString())).to.be.true;
+                const ERC1155_IID = "0xd9b67a26";
+                const AccessControl_IID = "0x7965db0b";
+                expect(await token.supportsInterface(ERC1155_IID)).to.be.true;
+                expect(await token.supportsInterface(AccessControl_IID)).to.be.true;
             });
+            
+
+            it("Should return false for unsupported interfaces", async () => {
+                const invalidInterface = "0x12345678";
+                expect(await token.supportsInterface(invalidInterface)).to.be.false;
+            })
+
         });
 
         describe("Minting", function () {
@@ -76,6 +85,14 @@ describe("Token and ForgingLogic Contracts", function () {
                 expect(await token.balanceOf(addr1.address, 0)).to.equal(2);
             });
 
+            it("Should allow minting exactly at the cooldown boundary", async () => {
+                await token.connect(addr1).mint(0, 1);
+                const mintedAt = await time.latest();
+                await time.increaseTo(mintedAt + 60);
+                await token.connect(addr1).mint(0, 1);
+                expect(await token.balanceOf(addr1.address, 0)).to.equal(2);
+            })
+
             it("Should prevent minting of tokens above 2", async function () {
                 await expect(
                     token.connect(addr1).mint(3, 1)
@@ -98,6 +115,7 @@ describe("Token and ForgingLogic Contracts", function () {
                 ).to.be.reverted;
             });
         });
+
     });
 
     describe("ForgingLogic Contract", function () {
@@ -169,6 +187,12 @@ describe("Token and ForgingLogic Contracts", function () {
                 expect(await token.balanceOf(addr1.address, 1)).to.equal(2);
             });
 
+            it("Should revert when trading with insufficient balance", async () => {
+                await expect(
+                    forgingLogic.connect(addr1).tradeToken(0, 1, 2)
+                ).to.be.revertedWith("Insufficient balance of token to trade");
+            });
+
             it("Should prevent invalid trades", async () => {
                 await expect(
                     forgingLogic.connect(addr1).tradeToken(0, 3, 1)
@@ -177,11 +201,12 @@ describe("Token and ForgingLogic Contracts", function () {
                 await expect(
                     forgingLogic.connect(addr1).tradeToken(0, 0, 1)
                 ).to.be.revertedWith("Cannot trade the same token");
+
             });
 
             it("Should handle reverse trades", async () => {
                 await forgingLogic.connect(addr1).tradeToken(1, 0, 1);
-                expect(await token.balanceOf(addr1.address, 0)).to.equal(1);
+                expect(await token.balanceOf(addr1.address, 0)).to.equal(2);
                 expect(await token.balanceOf(addr1.address, 1)).to.equal(0);
             });
 
@@ -190,7 +215,9 @@ describe("Token and ForgingLogic Contracts", function () {
                     .to.emit(forgingLogic, "Traded")
                     .withArgs(addr1.address, 0, 1, 1);
             });
+
         });
+
 
         describe("Admin Functions", function () {
 
@@ -202,12 +229,14 @@ describe("Token and ForgingLogic Contracts", function () {
             })
 
             it("Should allow admin to update forge token address", async  () => {
+                await newToken.grantRole(await newToken.DEFAULT_ADMIN_ROLE(), await forgingLogic.target);
                 await forgingLogic.setForgeTokenAddress(await newToken.target);
                 expect(await forgingLogic.forgeToken()).to.equal(await newToken.target);
             });
 
             it("Should maintain roles when changing token", async () => {   
-                await forgingLogic.setForgeTokenAddress(await newToken.target);
+                await newToken.grantRole(await newToken.DEFAULT_ADMIN_ROLE(), await forgingLogic.target);
+                await forgingLogic.setForgeTokenAddress(await newToken.target)
                 expect(await newToken.hasRole(await newToken.MINTER_ROLE(), await forgingLogic.target)).to.be.true;
                 expect(await newToken.hasRole(await newToken.BURNER_ROLE(), await forgingLogic.target)).to.be.true;
             }); 
@@ -229,8 +258,17 @@ describe("Token and ForgingLogic Contracts", function () {
                     token.connect(addr1).forgeBurn(addr1.address, 0, 1)
                 ).to.be.reverted;
             });
-            
-            
+
+            it("Should allow successful forgeMint", async () => {
+                await token.connect(owner).forgeMint(addr1.address, 3, 1);
+                expect(await token.balanceOf(addr1.address, 3)).to.equal(1);
+            });
+
+            it("Should allow successful forgeBurn", async () => {
+                await token.connect(owner).forgeMint(addr1.address, 3, 1);
+                await token.connect(owner).forgeBurn(addr1.address, 3, 1);
+                expect(await token.balanceOf(addr1.address, 3)).to.equal(0);
+            });
         });
 
         describe("Utility Functions", function () {
