@@ -16,7 +16,7 @@ describe("Token and ForgingLogic Contracts", function () {
         
         // Deploy Token contract
         const TokenFactory = await ethers.getContractFactory("Token");
-        token = await TokenFactory.deploy() as Token;
+        token = await TokenFactory.deploy() as unknown as Token;
         await token.waitForDeployment();
 
         //assign minter and burner roles to owner
@@ -25,7 +25,7 @@ describe("Token and ForgingLogic Contracts", function () {
 
         //deploy ForgingLogic contract
         const ForgingLogicFactory = await ethers.getContractFactory("ForgingLogic");
-        forgingLogic = await ForgingLogicFactory.deploy(await token.target) as ForgingLogic;
+        forgingLogic = await ForgingLogicFactory.deploy(await token.target) as unknown as ForgingLogic;
         await forgingLogic.waitForDeployment();
 
         //assign minter and burner roles to forgingLogic

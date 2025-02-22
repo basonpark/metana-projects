@@ -1,11 +1,10 @@
-// SPDX-License-Identifier: MIT  
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
 import "./Token.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 contract ForgingLogic is AccessControl {
-
     Token public forgeToken;
     address public owner;
     mapping(uint256 => uint256[]) private requiredTokens;
@@ -39,10 +38,13 @@ contract ForgingLogic is AccessControl {
     function forge(uint256 tokenId) public {
         address user = msg.sender;
         require(tokenId >= forgeToken.TOKEN_3() && tokenId <= forgeToken.TOKEN_6(), "You can only forge tokens 3-6");
-    
+
         // burn required tokens
         for (uint256 i = 0; i < requiredTokens[tokenId].length; i++) {
-            require(forgeToken.balanceOf(user, requiredTokens[tokenId][i]) >= 1, "Insufficient balance of token to forge");
+            require(
+                forgeToken.balanceOf(user, requiredTokens[tokenId][i]) >= 1,
+                "Insufficient balance of token to forge"
+            );
             forgeToken.forgeBurn(user, requiredTokens[tokenId][i], 1);
         }
         // mint new token
