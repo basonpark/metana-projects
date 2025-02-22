@@ -1,42 +1,38 @@
-import React, { useState, useEffect } from "react";
-import { useAccount, useReadContract } from "wagmi";
-import ForgingLogicArtifact from "@artifacts/contracts/ForgingLogic.sol/ForgingLogic.json";
+"use client";
+import React from "react";
+import { useTokenBalances } from "@/hooks/use-token-balances";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 type Props = {};
 
 const TokenBalances = (props: Props) => {
-  const { address } = useAccount();
-  const [balances, setBalances] = useState<number[]>([]);
-
-  const { data } = useReadContract({
-    address: process.env.FORGINGLOGIC_CONTRACT_ADDRESS as `0x${string}`,
-    abi: ForgingLogicArtifact.abi,
-    functionName: "getAllTokenBalances",
-    args: [address],
-    query: {
-      refetchInterval: 2000, // Refetch every 2 seconds
-    },
-  });
-
-  useEffect(() => {
-    if (data) {
-      setBalances(data as number[]);
-    }
-  }, [data]);
+  const balances = useTokenBalances();
 
   return (
-    <div>
-      <h2>Token Balances</h2>
-      <ul>
-        {balances.map((balance, index) => (
-          <li key={index}>
-            <p>
-              Token {index}: {balance.toString()}
-            </p>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <Card className="w-[350px] shadow-lg hover:shadow-xl transition-shadow duration-200">
+      <CardHeader>
+        <CardTitle>Token Balances</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 gap-3 gap-x-8">
+          {balances.map((balance, index) => (
+            <div
+              key={index}
+              className="flex justify-between items-center gap-2 p-2 rounded-lg bg-secondary"
+            >
+              <span className="font-medium">Token {index}</span>
+              <span className="font-bold">{balance.toString()}</span>
+            </div>
+          ))}
+          <div className="flex justify-between items-center gap-2 p-2 rounded-lg bg-secondary filter brightness-90">
+            <span className="font-medium">Total</span>
+            <span className="font-bold">
+              {balances.reduce((acc, balance) => acc + balance, 0)}
+            </span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 

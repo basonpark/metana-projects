@@ -19,8 +19,6 @@ contract ForgingLogic is AccessControl {
         owner = msg.sender;
         setRequiredTokens();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        // forgeToken.assignMinterRole(address(this));
-        // forgeToken.assignBurnerRole(address(this));
     }
 
     function setRequiredTokens() private {
@@ -71,11 +69,4 @@ contract ForgingLogic is AccessControl {
         }
         return balances;
     }
-
-
 }
-
-
-//Notes:
-//uint256[] cannot be passed in as parameter to function (requiredTokens); only uint8[]?
-//for mapping(uint256 => uint256[]) requiredTokens, set function in Token.sol not working

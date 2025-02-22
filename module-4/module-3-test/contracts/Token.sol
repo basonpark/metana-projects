@@ -22,7 +22,7 @@ contract Token is ERC1155, AccessControl {
 
     uint256 public cooldown = 1 minutes;
 
-    string public baseUri = "https://token.com/api/";
+    string public baseUri = "bafybeidldvu4go62jrup4deb7uppetbyvlqlyq33u7uyvpdvnesoj2vxky/";
 
     //mapping to track last minted time
     mapping(address => uint256) public lastMinted;
