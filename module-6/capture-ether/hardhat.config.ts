@@ -11,6 +11,10 @@ export default {
       {
         version: '0.4.21',
       },
+      {
+        version: '0.8.28'
+      }
+
     ],
   },
 };

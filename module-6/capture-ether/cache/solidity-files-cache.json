@@ -247,43 +247,6 @@
         "IName"
       ]
     },
-    "/Users/basonpark/Desktop/metana-projects/module-6/capture-ether/contracts/GuessTheNewNumberChallenge.sol": {
-      "lastModificationDate": 1740302658764,
-      "contentHash": "7e389ab169175821096d29c602ff91e4",
-      "sourceName": "contracts/GuessTheNewNumberChallenge.sol",
-      "solcConfig": {
-        "version": "0.4.21",
-        "settings": {
-          "optimizer": {
-            "enabled": false,
-            "runs": 200
-          },
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [],
-      "versionPragmas": [
-        "^0.4.21"
-      ],
-      "artifacts": [
-        "GuessTheNewNumberAttacker",
-        "GuessTheNewNumberChallenge",
-        "IGuessTheNewNumber"
-      ]
-    },
     "/Users/basonpark/Desktop/metana-projects/module-6/capture-ether/contracts/GuessTheNumberChallenge.sol": {
       "lastModificationDate": 1740295076503,
       "contentHash": "0e8b56b7e397ba07e8629600ee80c9d6",
@@ -706,37 +669,6 @@
       "artifacts": [
         "TokenWhaleChallenge"
       ]
-    },
-    "/Users/basonpark/Desktop/metana-projects/module-6/capture-ether/contracts/GuessTheNewNumberAttacker.sol": {
-      "lastModificationDate": 1740301443876,
-      "contentHash": "7215ee9c7d9dc229d2921a40e899ec5f",
-      "sourceName": "contracts/GuessTheNewNumberAttacker.sol",
-      "solcConfig": {
-        "version": "0.4.21",
-        "settings": {
-          "optimizer": {
-            "enabled": false,
-            "runs": 200
-          },
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [],
-      "versionPragmas": [],
-      "artifacts": []
     }
   }
 }
