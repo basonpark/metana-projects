@@ -14,7 +14,11 @@ import type {
   Signer,
   utils,
 } from "ethers";
-import type { FunctionFragment, Result } from "@ethersproject/abi";
+import type {
+  FunctionFragment,
+  Result,
+  EventFragment,
+} from "@ethersproject/abi";
 import type { Listener, Provider } from "@ethersproject/providers";
 import type {
   TypedEventFilter,
@@ -52,8 +56,24 @@ export interface PredictTheFutureChallengeInterface extends utils.Interface {
   ): Result;
   decodeFunctionResult(functionFragment: "isComplete", data: BytesLike): Result;
 
-  events: {};
+  events: {
+    "LockInGuess(address,uint8,uint256)": EventFragment;
+  };
+
+  getEvent(nameOrSignatureOrTopic: "LockInGuess"): EventFragment;
 }
+
+export interface LockInGuessEventObject {
+  guesser: string;
+  guess: number;
+  settlementBlockNumber: BigNumber;
+}
+export type LockInGuessEvent = TypedEvent<
+  [string, number, BigNumber],
+  LockInGuessEventObject
+>;
+
+export type LockInGuessEventFilter = TypedEventFilter<LockInGuessEvent>;
 
 export interface PredictTheFutureChallenge extends BaseContract {
   connect(signerOrProvider: Signer | Provider | string): this;
@@ -116,7 +136,18 @@ export interface PredictTheFutureChallenge extends BaseContract {
     isComplete(overrides?: CallOverrides): Promise<boolean>;
   };
 
-  filters: {};
+  filters: {
+    "LockInGuess(address,uint8,uint256)"(
+      guesser?: null,
+      guess?: null,
+      settlementBlockNumber?: null
+    ): LockInGuessEventFilter;
+    LockInGuess(
+      guesser?: null,
+      guess?: null,
+      settlementBlockNumber?: null
+    ): LockInGuessEventFilter;
+  };
 
   estimateGas: {
     settle(

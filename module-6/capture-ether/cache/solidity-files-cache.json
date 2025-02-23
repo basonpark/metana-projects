@@ -248,8 +248,8 @@
       ]
     },
     "/Users/basonpark/Desktop/metana-projects/module-6/capture-ether/contracts/GuessTheNewNumberChallenge.sol": {
-      "lastModificationDate": 1740302642344,
-      "contentHash": "b489ae4363c05554b01149bbcada6f0c",
+      "lastModificationDate": 1740302658764,
+      "contentHash": "7e389ab169175821096d29c602ff91e4",
       "sourceName": "contracts/GuessTheNewNumberChallenge.sol",
       "solcConfig": {
         "version": "0.4.21",
@@ -496,8 +496,8 @@
       ]
     },
     "/Users/basonpark/Desktop/metana-projects/module-6/capture-ether/contracts/PredictTheFutureChallenge.sol": {
-      "lastModificationDate": 1740295076503,
-      "contentHash": "aee9b2d4f294cf27fe829049fb58e24a",
+      "lastModificationDate": 1740310548028,
+      "contentHash": "2e60cb4c09f68bc6a7df52fb2e37eeb2",
       "sourceName": "contracts/PredictTheFutureChallenge.sol",
       "solcConfig": {
         "version": "0.4.21",

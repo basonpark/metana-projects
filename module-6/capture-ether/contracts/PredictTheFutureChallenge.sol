@@ -4,6 +4,7 @@ contract PredictTheFutureChallenge {
     address guesser;
     uint8 guess;
     uint256 settlementBlockNumber;
+    event LockInGuess(address guesser, uint8 guess, uint256 settlementBlockNumber);  
 
     function PredictTheFutureChallenge() public payable {
         require(msg.value == 1 ether);
@@ -20,6 +21,8 @@ contract PredictTheFutureChallenge {
         guesser = msg.sender;
         guess = n;
         settlementBlockNumber = block.number + 1;
+
+        emit LockInGuess(guesser, guess, settlementBlockNumber);
     }
 
     function settle() public {
