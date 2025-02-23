@@ -248,8 +248,8 @@
       ]
     },
     "/Users/basonpark/Desktop/metana-projects/module-6/capture-ether/contracts/GuessTheNewNumberChallenge.sol": {
-      "lastModificationDate": 1740295076503,
-      "contentHash": "404449286a593059dae7e9199a2f2eeb",
+      "lastModificationDate": 1740302642344,
+      "contentHash": "b489ae4363c05554b01149bbcada6f0c",
       "sourceName": "contracts/GuessTheNewNumberChallenge.sol",
       "solcConfig": {
         "version": "0.4.21",
@@ -279,7 +279,9 @@
         "^0.4.21"
       ],
       "artifacts": [
-        "GuessTheNewNumberChallenge"
+        "GuessTheNewNumberAttacker",
+        "GuessTheNewNumberChallenge",
+        "IGuessTheNewNumber"
       ]
     },
     "/Users/basonpark/Desktop/metana-projects/module-6/capture-ether/contracts/GuessTheNumberChallenge.sol": {
@@ -704,6 +706,37 @@
       "artifacts": [
         "TokenWhaleChallenge"
       ]
+    },
+    "/Users/basonpark/Desktop/metana-projects/module-6/capture-ether/contracts/GuessTheNewNumberAttacker.sol": {
+      "lastModificationDate": 1740301443876,
+      "contentHash": "7215ee9c7d9dc229d2921a40e899ec5f",
+      "sourceName": "contracts/GuessTheNewNumberAttacker.sol",
+      "solcConfig": {
+        "version": "0.4.21",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [],
+      "artifacts": []
     }
   }
 }

@@ -2,6 +2,7 @@
 /* tslint:disable */
 /* eslint-disable */
 export * as fuzzyIdentityChallengeSol from "./FuzzyIdentityChallenge.sol";
+export * as guessTheNewNumberChallengeSol from "./GuessTheNewNumberChallenge.sol";
 export * as nicknameChallengeSol from "./NicknameChallenge.sol";
 export * as tokenBankChallengeSol from "./TokenBankChallenge.sol";
 export { AccountTakeoverChallenge__factory } from "./AccountTakeoverChallenge__factory";
@@ -10,7 +11,6 @@ export { CallMeChallenge__factory } from "./CallMeChallenge__factory";
 export { DeployChallenge__factory } from "./DeployChallenge__factory";
 export { DonationChallenge__factory } from "./DonationChallenge__factory";
 export { FiftyYearsChallenge__factory } from "./FiftyYearsChallenge__factory";
-export { GuessTheNewNumberChallenge__factory } from "./GuessTheNewNumberChallenge__factory";
 export { GuessTheNumberChallenge__factory } from "./GuessTheNumberChallenge__factory";
 export { GuessTheRandomNumberChallenge__factory } from "./GuessTheRandomNumberChallenge__factory";
 export { GuessTheSecretNumberChallenge__factory } from "./GuessTheSecretNumberChallenge__factory";

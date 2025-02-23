@@ -3,6 +3,8 @@
 /* eslint-disable */
 import type * as fuzzyIdentityChallengeSol from "./FuzzyIdentityChallenge.sol";
 export type { fuzzyIdentityChallengeSol };
+import type * as guessTheNewNumberChallengeSol from "./GuessTheNewNumberChallenge.sol";
+export type { guessTheNewNumberChallengeSol };
 import type * as nicknameChallengeSol from "./NicknameChallenge.sol";
 export type { nicknameChallengeSol };
 import type * as tokenBankChallengeSol from "./TokenBankChallenge.sol";
@@ -13,7 +15,6 @@ export type { CallMeChallenge } from "./CallMeChallenge";
 export type { DeployChallenge } from "./DeployChallenge";
 export type { DonationChallenge } from "./DonationChallenge";
 export type { FiftyYearsChallenge } from "./FiftyYearsChallenge";
-export type { GuessTheNewNumberChallenge } from "./GuessTheNewNumberChallenge";
 export type { GuessTheNumberChallenge } from "./GuessTheNumberChallenge";
 export type { GuessTheRandomNumberChallenge } from "./GuessTheRandomNumberChallenge";
 export type { GuessTheSecretNumberChallenge } from "./GuessTheSecretNumberChallenge";
@@ -35,7 +36,12 @@ export type { FuzzyIdentityChallenge } from "./FuzzyIdentityChallenge.sol/FuzzyI
 export { FuzzyIdentityChallenge__factory } from "./factories/FuzzyIdentityChallenge.sol/FuzzyIdentityChallenge__factory";
 export type { IName } from "./FuzzyIdentityChallenge.sol/IName";
 export { IName__factory } from "./factories/FuzzyIdentityChallenge.sol/IName__factory";
-export { GuessTheNewNumberChallenge__factory } from "./factories/GuessTheNewNumberChallenge__factory";
+export type { GuessTheNewNumberAttacker } from "./GuessTheNewNumberChallenge.sol/GuessTheNewNumberAttacker";
+export { GuessTheNewNumberAttacker__factory } from "./factories/GuessTheNewNumberChallenge.sol/GuessTheNewNumberAttacker__factory";
+export type { GuessTheNewNumberChallenge } from "./GuessTheNewNumberChallenge.sol/GuessTheNewNumberChallenge";
+export { GuessTheNewNumberChallenge__factory } from "./factories/GuessTheNewNumberChallenge.sol/GuessTheNewNumberChallenge__factory";
+export type { IGuessTheNewNumber } from "./GuessTheNewNumberChallenge.sol/IGuessTheNewNumber";
+export { IGuessTheNewNumber__factory } from "./factories/GuessTheNewNumberChallenge.sol/IGuessTheNewNumber__factory";
 export { GuessTheNumberChallenge__factory } from "./factories/GuessTheNumberChallenge__factory";
 export { GuessTheRandomNumberChallenge__factory } from "./factories/GuessTheRandomNumberChallenge__factory";
 export { GuessTheSecretNumberChallenge__factory } from "./factories/GuessTheSecretNumberChallenge__factory";

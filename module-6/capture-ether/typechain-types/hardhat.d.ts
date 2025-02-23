@@ -45,9 +45,17 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.IName__factory>;
     getContractFactory(
+      name: "GuessTheNewNumberAttacker",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.GuessTheNewNumberAttacker__factory>;
+    getContractFactory(
       name: "GuessTheNewNumberChallenge",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.GuessTheNewNumberChallenge__factory>;
+    getContractFactory(
+      name: "IGuessTheNewNumber",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IGuessTheNewNumber__factory>;
     getContractFactory(
       name: "GuessTheNumberChallenge",
       signerOrOptions?: ethers.Signer | FactoryOptions
@@ -150,10 +158,20 @@ declare module "hardhat/types/runtime" {
       signer?: ethers.Signer
     ): Promise<Contracts.IName>;
     getContractAt(
+      name: "GuessTheNewNumberAttacker",
+      address: string,
+      signer?: ethers.Signer
+    ): Promise<Contracts.GuessTheNewNumberAttacker>;
+    getContractAt(
       name: "GuessTheNewNumberChallenge",
       address: string,
       signer?: ethers.Signer
     ): Promise<Contracts.GuessTheNewNumberChallenge>;
+    getContractAt(
+      name: "IGuessTheNewNumber",
+      address: string,
+      signer?: ethers.Signer
+    ): Promise<Contracts.IGuessTheNewNumber>;
     getContractAt(
       name: "GuessTheNumberChallenge",
       address: string,
