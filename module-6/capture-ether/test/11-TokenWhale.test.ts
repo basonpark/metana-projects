@@ -19,6 +19,7 @@ describe('TokenWhaleChallenge', () => {
 
     target = target.connect(attacker);
   });
+  
   it('exploit', async () => {  
     await target.connect(attacker).approve(deployer.address, 1000);  
 
