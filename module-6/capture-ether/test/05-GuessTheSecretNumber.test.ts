@@ -26,10 +26,7 @@ describe('GuessTheSecretNumberChallenge', () => {
     const answerHash = "0xdb81b4d58595fbbbb592d3661a34cdca14d7ab379441400cbfa1b78bc447c365";
     
     for (let i = 0; i < 256; i++) {
-      // Encode as bytes using defaultAbiCoder
-      const encoded = ethers.utils.defaultAbiCoder.encode(['uint8'], [i]);
-      const hash = ethers.utils.keccak256(encoded);
-      
+      const hash = ethers.utils.keccak256(i);
       if (hash === answerHash) {
         await target.guess(i, { value: utils.parseEther('1') });
         break;
