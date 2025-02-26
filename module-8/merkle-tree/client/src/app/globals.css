@@ -1,0 +1,187 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --navy: #22223b;
+  --slate: #4a4e69;
+  --mauve: #9a8c98;
+  --rose: #c9ada7;
+  --cream: #f2e9e4;
+
+  /* Font variables */
+  --font-sans: var(--font-dm-sans);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  background-color: var(--cream);
+  color: var(--navy);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.btn-primary {
+  @apply px-4 py-2 rounded-lg transition-colors;
+  background-color: var(--slate);
+  color: white;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.btn-primary:hover {
+  background-color: var(--navy);
+}
+
+.btn-primary:disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+.btn-secondary {
+  @apply px-4 py-2 rounded-lg transition-colors;
+  background-color: var(--mauve);
+  color: white;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.btn-secondary:hover {
+  background-color: var(--slate);
+}
+
+.btn-danger {
+  @apply px-4 py-2 rounded-lg transition-colors;
+  background-color: #e53e3e;
+  color: white;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.btn-danger:hover {
+  background-color: #c53030;
+}
+
+.card {
+  @apply p-6 rounded-lg shadow-md;
+  background-color: white;
+  border: 1px solid rgba(201, 173, 167, 0.2);
+}
+
+.progress-container {
+  @apply w-full h-2.5 rounded-full;
+  background-color: rgba(154, 140, 152, 0.2);
+}
+
+.progress-bar {
+  @apply h-2.5 rounded-full;
+  background-color: var(--mauve);
+}
+
+.badge {
+  @apply px-3 py-1 rounded-full text-xs;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.badge-paused {
+  background-color: rgba(74, 78, 105, 0.2);
+  color: var(--slate);
+}
+
+.badge-presale {
+  background-color: rgba(74, 78, 105, 0.3);
+  color: var(--navy);
+}
+
+.badge-public {
+  background-color: rgba(154, 140, 152, 0.3);
+  color: var(--navy);
+}
+
+.badge-soldout {
+  background-color: rgba(34, 34, 59, 0.3);
+  color: var(--navy);
+}
+
+.badge-revealed {
+  background-color: rgba(201, 173, 167, 0.3);
+  color: var(--navy);
+}
+
+/* Typography enhancements */
+.heading-xl {
+  @apply text-4xl md:text-5xl;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.heading-lg {
+  @apply text-3xl;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.heading-md {
+  @apply text-xl;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.body-lg {
+  @apply text-lg;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 400;
+}
+
+.body-md {
+  @apply text-base;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 400;
+}
+
+.body-sm {
+  @apply text-sm;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 400;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 640px) {
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger {
+    @apply w-full py-3;
+  }
+}
