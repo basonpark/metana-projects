@@ -62,6 +62,20 @@ describe("Token and ForgingLogic Contracts", function () {
                 expect(await token.supportsInterface(invalidInterface)).to.be.false;
             })
 
+            it("Should return correct URI for different token IDs", async function () {
+                // Test multiple token IDs to ensure the URI function works correctly for all
+                expect(await token.uri(0)).to.equal("bafybeidldvu4go62jrup4deb7uppetbyvlqlyq33u7uyvpdvnesoj2vxky/0.json");
+                expect(await token.uri(1)).to.equal("bafybeidldvu4go62jrup4deb7uppetbyvlqlyq33u7uyvpdvnesoj2vxky/1.json");
+                expect(await token.uri(6)).to.equal("bafybeidldvu4go62jrup4deb7uppetbyvlqlyq33u7uyvpdvnesoj2vxky/6.json");
+            });
+
+        });
+
+        describe("URI Functionality", function () {
+            it("Should handle URI construction correctly", async function () {
+                const baseUri = await token.baseUri();
+                expect(await token.uri(3)).to.equal(baseUri + "3.json");
+            });
         });
 
         describe("Minting", function () {
@@ -109,9 +123,14 @@ describe("Token and ForgingLogic Contracts", function () {
                 expect(await token.hasRole(await token.BURNER_ROLE(), addr1.address)).to.be.true;
             });
 
-            it("Should prevent unauthorized role assignments", async function () {
+            it("Should prevent unauthorized minter role assignments", async function () {
                 await expect(
                     token.connect(addr1).assignMinterRole(addr2.address)
+                ).to.be.reverted;
+            });
+            it("Should prevent unauthorized burner role assignments", async function () {
+                await expect(
+                    token.connect(addr1).assignBurnerRole(addr2.address)
                 ).to.be.reverted;
             });
         });
@@ -268,6 +287,15 @@ describe("Token and ForgingLogic Contracts", function () {
                 await token.connect(owner).forgeMint(addr1.address, 3, 1);
                 await token.connect(owner).forgeBurn(addr1.address, 3, 1);
                 expect(await token.balanceOf(addr1.address, 3)).to.equal(0);
+            });
+
+            it("Should allow minting and burning of any token ID by authorized roles", async function () {
+                // Test higher token IDs that can't be normally minted
+                await token.connect(owner).forgeMint(addr1.address, 6, 1);
+                expect(await token.balanceOf(addr1.address, 6)).to.equal(1);
+                
+                await token.connect(owner).forgeBurn(addr1.address, 6, 1);
+                expect(await token.balanceOf(addr1.address, 6)).to.equal(0);
             });
         });
 
