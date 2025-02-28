@@ -1,98 +1,56 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-import { motion, MotionProps } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 
-interface TypingAnimationProps extends MotionProps {
-  children: string;
-  className?: string;
-  duration?: number;
-  delay?: number;
-  as?: React.ElementType;
-  startOnView?: boolean;
-}
-
-export function TypingAnimation({
-  children,
-  className,
-  duration = 70,
-  delay = 0,
-  as: Component = "div",
-  startOnView = false,
-  ...props
-}: TypingAnimationProps) {
-  const MotionComponent = motion.create(Component, {
-    forwardMotionProps: true,
-  });
-
-  const [displayedText, setDisplayedText] = useState<string>("");
-  const [started, setStarted] = useState(false);
-  const elementRef = useRef<HTMLElement | null>(null);
+export const TypingAnimation = ({ children }: { children: string }) => {
+  const [text, setText] = useState("");
+  const [showCursor, setShowCursor] = useState(true);
 
   useEffect(() => {
-    if (!startOnView) {
-      const startTimeout = setTimeout(() => {
-        setStarted(true);
-      }, delay);
-      return () => clearTimeout(startTimeout);
-    }
+    if (typeof children !== "string") return;
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setTimeout(() => {
-            setStarted(true);
-          }, delay);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1 }
-    );
+    // Keep cursor blinking at all times
+    const cursorInterval = setInterval(() => {
+      setShowCursor((prev) => !prev);
+    }, 500);
 
-    if (elementRef.current) {
-      observer.observe(elementRef.current);
-    }
+    // Function to handle one complete animation cycle
+    const typeText = async () => {
+      // Clear the text
+      setText("");
 
-    return () => observer.disconnect();
-  }, [delay, startOnView]);
+      // Type out the text character by character
+      for (let i = 0; i <= children.length; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        setText(children.substring(0, i));
+      }
 
-  useEffect(() => {
-    if (!started) return;
+      // Pause at the end with full text
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    const startTyping = () => {
-      let i = 0;
-      const typingEffect = setInterval(() => {
-        if (i < children.length) {
-          setDisplayedText(children.substring(0, i + 1));
-          i++;
-        } else {
-          clearInterval(typingEffect);
-          // Wait for 2 seconds, then clear text and restart
-          setTimeout(() => {
-            setDisplayedText("");
-            setTimeout(startTyping, 500); // Small pause before restarting
-          }, 2000);
-        }
-      }, duration);
-
-      return typingEffect;
+      // Start over
+      typeText();
     };
 
-    const typingInterval = startTyping();
-    return () => clearInterval(typingInterval);
-  }, [children, duration, started]);
+    // Start the animation
+    typeText();
+
+    // Cleanup on unmount
+    return () => {
+      clearInterval(cursorInterval);
+    };
+  }, [children]);
 
   return (
-    <MotionComponent
-      ref={elementRef}
-      className={cn(
-        "text-2xl font-semibold leading-[2.3rem] tracking-[-0.02em]",
-        className
-      )}
-      {...props}
-    >
-      {displayedText || <span className="opacity-0">{children}</span>}
-    </MotionComponent>
+    <span>
+      {text}
+      <span
+        className={`border-r-2 border-white ml-1 ${
+          showCursor ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        &nbsp;
+      </span>
+    </span>
   );
-}
+};
