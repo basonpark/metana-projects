@@ -1,71 +1,47 @@
-import { cn } from "@/lib/utils";
+"use client";
+
 import React from "react";
 
-export interface OrbitingCirclesProps
-  extends React.HTMLAttributes<HTMLDivElement> {
-  className?: string;
-  children?: React.ReactNode;
-  reverse?: boolean;
-  duration?: number;
-  delay?: number;
-  radius?: number;
-  path?: boolean;
-  iconSize?: number;
-  speed?: number;
-}
-
-export function OrbitingCircles({
-  className,
-  children,
-  reverse,
-  duration = 20,
-  radius = 160,
-  path = true,
-  iconSize = 30,
-  speed = 1,
-  ...props
-}: OrbitingCirclesProps) {
-  const calculatedDuration = duration / speed;
+export const OrbitingCircles = ({
+  items = 6,
+  radius = 120,
+  className = "",
+  circleClassName = "",
+}) => {
   return (
-    <>
-      {path && (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          version="1.1"
-          className="pointer-events-none absolute inset-0 size-full"
-        >
-          <circle
-            className="stroke-black/10 stroke-1 dark:stroke-white/10"
-            cx="50%"
-            cy="50%"
-            r={radius}
-            fill="none"
-          />
-        </svg>
-      )}
-      {React.Children.map(children, (child, index) => {
-        const angle = (360 / React.Children.count(children)) * index;
+    <div className={`relative ${className}`}>
+      {Array.from({ length: items }).map((_, i) => {
+        const angle = (i / items) * Math.PI * 2;
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+        const animationDelay = `${i * 0.5}s`;
+
         return (
           <div
-            style={
-              {
-                "--duration": calculatedDuration,
-                "--radius": radius,
-                "--angle": angle,
-                "--icon-size": `${iconSize}px`,
-              } as React.CSSProperties
-            }
-            className={cn(
-              `absolute flex size-[var(--icon-size)] transform-gpu animate-orbit items-center justify-center rounded-full`,
-              { "[animation-direction:reverse]": reverse },
-              className,
-            )}
-            {...props}
-          >
-            {child}
-          </div>
+            key={i}
+            className={`absolute h-3 w-3 rounded-full bg-[#FFCB9A] animate-orbit ${circleClassName}`}
+            style={{
+              left: `calc(50% + ${x}px)`,
+              top: `calc(50% + ${y}px)`,
+              transformOrigin: `${-x}px ${-y}px`,
+              animationDelay,
+            }}
+          />
         );
       })}
-    </>
+      <style jsx>{`
+        @keyframes orbit {
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
+        }
+        .animate-orbit {
+          animation: orbit 20s linear infinite;
+        }
+      `}</style>
+    </div>
   );
-}
+};

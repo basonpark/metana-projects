@@ -14,10 +14,15 @@ const settings = {
 export const alchemy = new Alchemy(settings);
 
 // Type for enriched block data  
-export interface EnrichedBlock extends Block {  
-  transferVolume: number;  
+export interface EnrichedBlock {  
+  number: number;  
+  timestamp: number;  
+  gasUsed: number;  
+  gasLimit: number;  
   baseFeeGwei: number;  
   gasRatio: number;  
+  transferVolume: number;  
+  transactions: number;  
 }  
 
 // Fetch block data with additional metrics  
@@ -51,10 +56,14 @@ export const getEnrichedBlock = async (blockNumber: number, tokenAddress: string
     console.log('Transfer data:', transfers);
 
     return {  
-      ...block,  
-      transferVolume: transfers.transfers.reduce((acc, t) => acc + Number(t.value), 0),  
+      number: block.number,  
+      timestamp: block.timestamp,  
+      gasUsed: Number(block.gasUsed),  
+      gasLimit: Number(block.gasLimit),  
       baseFeeGwei: Number(block.baseFeePerGas) / 1e9, // Convert wei to gwei  
       gasRatio: (Number(block.gasUsed) / Number(block.gasLimit)) * 100,  
+      transferVolume: transfers.transfers.reduce((acc, t) => acc + Number(t.value), 0),  
+      transactions: block.transactions.length  
     };  
   } catch (error) {
     console.error('Error fetching transfers:', error);
@@ -66,9 +75,8 @@ export const getEnrichedBlock = async (blockNumber: number, tokenAddress: string
 export const createBlockListener = (  
   callback: (blockNumber: number) => void  
 ) => {  
-  const subscription = alchemy.ws.on("block", (blockNumber) => {  
-    callback(Number(blockNumber));  
-  });  
-
-  return subscription.removeAllListeners;  // Alchemy's ws.on returns an unsubscribe function
+  alchemy.ws.on("block", callback);  
+  return () => {  
+    alchemy.ws.off("block", callback);  
+  };  
 };  
