@@ -7,6 +7,7 @@ export const useBlockData = (tokenAddress: string, blockCount: number = 10) => {
   const [isConnected, setIsConnected] = useState(false);  
   const [error, setError] = useState<string | null>(null);
   const [latestBlockNumber, setLatestBlockNumber] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Load more historical blocks
   const loadMoreBlocks = useCallback(async (endBlock: number, tokenAddress: string) => {
@@ -42,26 +43,28 @@ export const useBlockData = (tokenAddress: string, blockCount: number = 10) => {
 
   // Initial load  
   useEffect(() => {  
-    const initialize = async () => {  
-      try {  
-        console.log('Initializing block data...');
-        const latest = await alchemy.core.getBlockNumber();  
-        setLatestBlockNumber(latest);
-        console.log('Latest block number:', latest);
-        const numbers = Array.from({ length: blockCount }, (_, i) => latest - i);  
-        console.log('Fetching blocks:', numbers);
-        const initialBlocks = await Promise.all(numbers.map((blockNumber) => getEnrichedBlock(blockNumber, tokenAddress)));  
-        console.log('Initial blocks:', initialBlocks);
-        setBlocks(initialBlocks);  
-        setIsConnected(true);  
-      } catch (err) {  
-        console.error('Error in initialize:', err);
-        setError("Failed to load initial block data");  
-      }
-    };  
-
-    initialize();  
-  }, [blockCount, tokenAddress]);  
+    if (isConnected && websocket) {
+      // Start with a smaller initial batch of blocks
+      const initialBlockCount = 10; // Match the block table page size
+      
+      // Load initial blocks more gradually
+      const loadInitialBlocks = async () => {
+        setIsLoading(true);
+        try {
+          const currentBlock = await provider.getBlockNumber();
+          // Load just enough blocks for the first page
+          await loadBlocksRange(currentBlock, currentBlock - initialBlockCount + 1, tokenAddress);
+        } catch (error) {
+          console.error("Error loading initial blocks:", error);
+          setError("Failed to load initial blocks. Please refresh the page.");
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      loadInitialBlocks();
+    }
+  }, [isConnected, websocket, tokenAddress]);  
 
   // WebSocket subscription  
   useEffect(() => {  
@@ -84,7 +87,8 @@ export const useBlockData = (tokenAddress: string, blockCount: number = 10) => {
     isConnected, 
     error, 
     latestBlockNumber,
-    loadMoreBlocks 
+    loadMoreBlocks,
+    isLoading
   };  
 };  
 
