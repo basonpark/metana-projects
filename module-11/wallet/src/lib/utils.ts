@@ -1,5 +1,3 @@
-// utils.ts - utility functions for conversion and formatting
-
 /**
  * converts hex string to byte array
  */
@@ -15,7 +13,7 @@ export function hexToBytes(hex: string): Uint8Array {
   const bytes = new Uint8Array(hex.length / 2);
   
   for (let i = 0; i < bytes.length; i++) {
-    const byte = parseInt(hex.substr(i * 2, 2), 16);
+    const byte = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
     bytes[i] = byte;
   }
   
