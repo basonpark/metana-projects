@@ -1,101 +1,122 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import AccountInfo from "../components/AccountInfo";
+import React, { useState, useEffect } from "react";
 import CreateWallet from "../components/CreateWallet";
+import AccountInfo from "../components/AccountInfo";
 import SendTransaction from "../components/SendTransaction";
 import TransactionHistory from "../components/TransactionHistory";
-import NetworkSelector from "../components/NetworkSelector";
 import { Wallet } from "../lib/wallet";
+import { getBalance } from "../lib/balance";
 
-export default function WalletPage() {
+export default function Home() {
   const [wallet, setWallet] = useState<Wallet | null>(null);
-  const [balance, setBalance] = useState<string>("0");
+  const [balance, setBalance] = useState<string>("0x0");
+  const [showSend, setShowSend] = useState(false);
   const [transactions, setTransactions] = useState<any[]>([]);
 
-  // load wallet from localStorage on component mount
+  // Load wallet from localStorage on mount
   useEffect(() => {
-    const storedWallet = localStorage.getItem("wallet");
-    if (storedWallet) {
+    const savedWallet = localStorage.getItem("wallet");
+    if (savedWallet) {
       try {
-        setWallet(JSON.parse(storedWallet));
+        setWallet(JSON.parse(savedWallet));
       } catch (e) {
-        console.error("Failed to load wallet", e);
+        console.error("Failed to parse saved wallet", e);
       }
     }
   }, []);
 
-  // save wallet to localStorage when it changes
+  // Fetch balance when wallet changes
   useEffect(() => {
     if (wallet) {
+      refreshBalance();
       localStorage.setItem("wallet", JSON.stringify(wallet));
     }
   }, [wallet]);
 
-  // fetch balance when wallet changes
+  const refreshBalance = async () => {
+    if (!wallet) return;
+    try {
+      const newBalance = await getBalance(wallet.address);
+      setBalance(newBalance);
+    } catch (e) {
+      console.error("Failed to fetch balance", e);
+    }
+  };
+
+  const refreshTransactions = async () => {
+    // In a real app, this would fetch transactions from an API
+    // For now, we'll just use sample data
+    const sampleTx = [
+      {
+        hash: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+        from: "0x1234567890abcdef1234567890abcdef12345678",
+        to: wallet?.address || "",
+        value: "0x38D7EA4C68000", // 0.001 ETH in wei
+        timestamp: Math.floor(Date.now() / 1000) - 3600,
+        status: "confirmed",
+        direction: "incoming",
+      },
+      {
+        hash: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+        from: wallet?.address || "",
+        to: "0xabcdef1234567890abcdef1234567890abcdef12",
+        value: "0x16345785D8A0000", // 0.1 ETH in wei
+        timestamp: Math.floor(Date.now() / 1000) - 86400,
+        status: "confirmed",
+        direction: "outgoing",
+      },
+    ];
+    setTransactions(sampleTx);
+  };
+
   useEffect(() => {
     if (wallet) {
-      fetchBalance(wallet.address);
+      refreshTransactions();
     }
   }, [wallet]);
 
-  async function fetchBalance(address: string) {
-    try {
-      const response = await fetch("/api/balance", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ address }),
-      });
+  const handleWalletCreated = (newWallet: Wallet) => {
+    setWallet(newWallet);
+  };
 
-      const data = await response.json();
-      setBalance(data.balance);
-    } catch (error) {
-      console.error("Failed to fetch balance", error);
-    }
-  }
-
-  function handleTransactionComplete(tx: any) {
-    setTransactions((prev) => [tx, ...prev]);
-
-    // refresh balance after transaction
-    if (wallet) {
-      fetchBalance(wallet.address);
-    }
-  }
+  const handleSendSuccess = () => {
+    setShowSend(false);
+    refreshBalance();
+    refreshTransactions();
+  };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8 text-center">
-        Basic Ethereum Wallet
-      </h1>
+    <main className="min-h-screen p-4 md:p-8">
+      <div className="container mx-auto max-w-3xl">
+        {!wallet ? (
+          <CreateWallet onWalletCreated={handleWalletCreated} />
+        ) : (
+          <>
+            <AccountInfo
+              wallet={wallet}
+              balance={balance}
+              onSend={() => setShowSend(true)}
+              refreshBalance={refreshBalance}
+            />
 
-      <div className="mb-6">
-        <NetworkSelector />
+            {showSend && (
+              <SendTransaction
+                wallet={wallet}
+                balance={balance}
+                onClose={() => setShowSend(false)}
+                onSuccess={handleSendSuccess}
+              />
+            )}
+
+            <TransactionHistory
+              walletAddress={wallet.address}
+              refreshTransactions={refreshTransactions}
+              transactions={transactions}
+            />
+          </>
+        )}
       </div>
-
-      {!wallet ? (
-        <CreateWallet onWalletCreated={setWallet} />
-      ) : (
-        <div className="space-y-8">
-          <AccountInfo wallet={wallet} balance={balance} />
-
-          <SendTransaction
-            wallet={wallet}
-            onTransactionComplete={handleTransactionComplete}
-          />
-
-          <TransactionHistory transactions={transactions} />
-        </div>
-      )}
-
-      <div className="mt-12 text-center text-sm text-gray-500">
-        <p>This is a demonstration wallet. Never use in production.</p>
-        <p>
-          All transaction data is handled manually without wallet libraries.
-        </p>
-      </div>
-    </div>
+    </main>
   );
 }

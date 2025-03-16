@@ -1,4 +1,3 @@
-// network.ts - network configuration and utilities
 
 // supported networks
 export const networks = {
@@ -8,15 +7,7 @@ export const networks = {
     rpc: 'https://rpc.sepolia.org',
     blockExplorer: 'https://sepolia.etherscan.io',
     symbol: 'ETH',
-  },
-  goerli: {
-    name: 'Goerli Testnet',
-    chainId: 5,
-    rpc: 'https://goerli.infura.io/v3/your-infura-key',
-    blockExplorer: 'https://goerli.etherscan.io',
-    symbol: 'ETH',
-  },
-  // add more networks as needed
+  }
 };
 
 // current network (default to sepolia)
