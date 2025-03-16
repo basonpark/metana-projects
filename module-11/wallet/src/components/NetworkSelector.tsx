@@ -1,75 +1,106 @@
-import { useState, useEffect } from "react";
-import { networks, setNetwork, getCurrentChainId } from "../lib/network";
+import React, { useState } from "react";
+import { networks, setNetwork } from "../lib/network";
 
-export default function NetworkSelector() {
-  const [selectedNetwork, setSelectedNetwork] = useState("sepolia");
+// Icons
+const ChevronDownIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="6 9 12 15 18 9"></polyline>
+  </svg>
+);
 
-  // Set the selected network when the component mounts
-  useEffect(() => {
-    const savedNetwork = localStorage.getItem("network");
-    if (savedNetwork && networks[savedNetwork]) {
-      setSelectedNetwork(savedNetwork);
-      setNetwork(savedNetwork);
-    }
-  }, []);
+const CheckIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="20 6 9 17 4 12"></polyline>
+  </svg>
+);
 
-  const handleNetworkChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const network = e.target.value;
-    setSelectedNetwork(network);
+const NetworkSelector: React.FC = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [currentNetwork, setCurrentNetwork] = useState("sepolia");
+
+  const handleNetworkChange = (network: string) => {
     setNetwork(network);
-    localStorage.setItem("network", network);
+    setCurrentNetwork(network);
+    setIsOpen(false);
+  };
+
+  const getNetworkColor = (network: string) => {
+    switch (network) {
+      case "sepolia":
+        return "#F76C3B"; // Orange
+      case "goerli":
+        return "#5A9DED"; // Blue
+      case "mainnet":
+        return "#29B6AF"; // Teal
+      default:
+        return "#8247E5"; // Purple
+    }
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-medium text-gray-700">Network</h3>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Select a testnet for transactions
-          </p>
-        </div>
+    <div className="network-selector-container relative">
+      <button
+        className="network-display flex items-center gap-2 py-1 px-3 rounded-full bg-opacity-20 bg-blue-900 border border-blue-800"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div
+          className="network-indicator w-2.5 h-2.5 rounded-full"
+          style={{ backgroundColor: getNetworkColor(currentNetwork) }}
+        ></div>
+        <span className="text-sm">
+          {networks[currentNetwork as keyof typeof networks]?.name ||
+            "Sepolia Testnet"}
+        </span>
+        <ChevronDownIcon
+          className={`transition-transform ${isOpen ? "rotate-180" : ""}`}
+        />
+      </button>
 
-        <select
-          value={selectedNetwork}
-          onChange={handleNetworkChange}
-          className="block w-48 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-        >
-          {Object.entries(networks).map(([id, network]) => (
-            <option key={id} value={id}>
-              {network.name} (Chain ID: {network.chainId})
-            </option>
+      {isOpen && (
+        <div className="network-dropdown glass-effect absolute right-0 top-full mt-2 z-10 w-48 rounded-md overflow-hidden">
+          {Object.keys(networks).map((network) => (
+            <button
+              key={network}
+              className={`network-option flex items-center gap-2 w-full py-2 px-3 text-left hover:bg-blue-900 hover:bg-opacity-30 ${
+                currentNetwork === network ? "bg-blue-900 bg-opacity-40" : ""
+              }`}
+              onClick={() => handleNetworkChange(network)}
+            >
+              <div
+                className="network-indicator w-2.5 h-2.5 rounded-full"
+                style={{ backgroundColor: getNetworkColor(network) }}
+              ></div>
+              <span>
+                {networks[network as keyof typeof networks]?.name ||
+                  "Unknown Network"}
+              </span>
+              {currentNetwork === network && <CheckIcon className="ml-auto" />}
+            </button>
           ))}
-        </select>
-      </div>
-
-      {selectedNetwork === "sepolia" && (
-        <div className="mt-2 text-xs bg-yellow-50 text-yellow-800 p-2 rounded">
-          ℹ️ Get testnet ETH from{" "}
-          <a
-            href="https://sepoliafaucet.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:text-yellow-900"
-          >
-            Sepolia Faucet
-          </a>
-        </div>
-      )}
-
-      {selectedNetwork === "goerli" && (
-        <div className="mt-2 text-xs bg-yellow-50 text-yellow-800 p-2 rounded">
-          ℹ️ Get testnet ETH from{" "}
-          <a
-            href="https://goerlifaucet.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:text-yellow-900"
-          >
-            Goerli Faucet
-          </a>
         </div>
       )}
     </div>
   );
-}
+};
+
+export default NetworkSelector;

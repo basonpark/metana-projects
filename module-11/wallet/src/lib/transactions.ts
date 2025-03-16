@@ -1,6 +1,6 @@
 // transactions.ts - create, sign, and broadcast transactions
 import { keccak256 } from 'js-sha3';
-import { RLP } from 'rlp';
+import { RLP } from './rlp-adapter';
 import { ec as EC } from 'elliptic';
 import { Wallet } from './wallet';
 import { getCurrentNonce } from './nonce';
