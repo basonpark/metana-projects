@@ -3,6 +3,9 @@ import * as crypto from 'crypto';
 import { keccak256 } from 'js-sha3';
 import { ec as EC } from 'elliptic';
 import { hexToBytes, bytesToHex } from './utils';
+import { generateMnemonic, mnemonicToSeedSync } from 'ethereum-cryptography/bip39/index.js';
+import { wordlist } from 'ethereum-cryptography/bip39/wordlists/english.js';
+import { HDKey } from 'ethereum-cryptography/hdkey';
 
 // we use the secp256k1 curve for ethereum
 const ec = new EC('secp256k1');
@@ -12,19 +15,25 @@ export interface Wallet {
   privateKey: string;
   publicKey: string;
   address: string;
+  mnemonic?: string; // Optional mnemonic for seed phrase wallets
 }
 
-/**
- * creates a new wallet by generating a random private key
- * and deriving the public key and address from it
- */
+//creates wallet by deriving public key and addres from private key
 export function createWallet(): Wallet {
-  // generate random private key
-  const privateKeyBytes = crypto.randomBytes(32);
-  const privateKey = bytesToHex(privateKeyBytes);
+  // generate mnemonic and derive private key using HD wallet
+  const mnemonic = generateMnemonic(wordlist);  // Use English wordlist
+  const seed = mnemonicToSeedSync(mnemonic);
+  const hdKey = HDKey.fromMasterSeed(seed)
+    .derive("m/44'/60'/0'/0/0"); // Standard Ethereum path
+  
+  if (!hdKey.privateKey) {
+    throw new Error("Failed to generate private key from mnemonic");
+  }
+  
+  const privateKey = bytesToHex(Buffer.from(hdKey.privateKey));
   
   // derive public key from private key
-  const keyPair = ec.keyFromPrivate(privateKeyBytes);
+  const keyPair = ec.keyFromPrivate(hdKey.privateKey);
   const publicKeyBytes = keyPair.getPublic('array');
   const publicKey = bytesToHex(Buffer.from(publicKeyBytes));
   
@@ -38,6 +47,7 @@ export function createWallet(): Wallet {
     privateKey,
     publicKey,
     address,
+    mnemonic,
   };
 }
 
@@ -86,3 +96,8 @@ export function signMessage(wallet: Wallet, message: string): string {
   
   return '0x' + r + s + v;
 } 
+
+
+//when user wants to add new accounts, user needs to reinput password to decrypt private key and show accounts
+//every time user wants to add account, you need to make sure that password is the same
+//when user wants to generate wallet, you need to store 2 things in the browser

@@ -2,8 +2,7 @@ import { getCurrentNetworkRPC } from "./network";
 
 /**
  * Fetches the balance of an Ethereum address from the current network
- * @param address The Ethereum address to fetch the balance for
- * @returns The balance in hex string format (e.g. 0x123)
+ * input address, returns balance in hex
  */
 export async function getBalance(address: string): Promise<string> {
   try {
