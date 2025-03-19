@@ -20,6 +20,22 @@ const WarningIcon = () => (
   </svg>
 );
 
+const BackIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M19 12H5M12 19l-7-7 7-7" />
+  </svg>
+);
+
 const CheckIcon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -230,33 +246,59 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     }
   };
 
+  // Navigation handler for back button
+  const handleBack = () => {
+    if (step === OnboardingStep.CREATE_OR_IMPORT) {
+      setStep(OnboardingStep.WELCOME);
+    } else if (step === OnboardingStep.BACKUP_SEED) {
+      setStep(OnboardingStep.CREATE_OR_IMPORT);
+    } else if (step === OnboardingStep.VERIFY_SEED) {
+      setStep(OnboardingStep.BACKUP_SEED);
+    } else if (step === OnboardingStep.IMPORT_WALLET) {
+      setStep(OnboardingStep.CREATE_OR_IMPORT);
+    }
+  };
+
   return (
     <div className="onboarding-container flex flex-col items-center justify-center min-h-screen p-6">
       <div className="logo-container flex flex-col items-center mb-20 fade-in">
         <div className="logo-animation mb-10">
           <EthereumLogo />
         </div>
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-          Ethereum Wallet
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent tracking-tight">
+          CoinShield
         </h1>
-        <p className="text-gray-400 mt-6 text-lg tracking-wide">
+        <p className="text-gray-400 text-xl tracking-wide font-light">
           Secure • Simple • Powerful
         </p>
       </div>
 
       <div
-        className="onboarding-card glass-effect glass-effect-enhanced w-full max-w-lg p-10 rounded-xl fade-in"
+        className="onboarding-card glass-effect glass-effect-enhanced w-full max-w-lg p-10 rounded-xl fade-in relative flex flex-col"
         style={{ animationDelay: "0.3s" }}
       >
+        {/* Back Button (only show when not on Welcome step) */}
+        {step !== OnboardingStep.WELCOME && (
+          <button
+            onClick={handleBack}
+            className="absolute top-6 left-6 bg-gray-800 hover:bg-gray-700 p-2 rounded-full transition-colors z-10"
+            aria-label="Go back"
+          >
+            <BackIcon />
+          </button>
+        )}
+
         {/* Welcome Step */}
         {step === OnboardingStep.WELCOME && (
-          <div className="stagger-fade-in">
-            <h2 className="text-3xl font-bold text-center mb-14">Welcome!</h2>
-            <p className="text-center mb-20 text-gray-300 text-lg leading-relaxed">
-              Your journey to secure and easy cryptocurrency management starts
-              here. Get ready to experience the future of finance.
-            </p>
-            <div className="flex justify-center mt-14">
+          <div className="stagger-fade-in flex flex-col h-full items-center">
+            <div className="flex flex-col items-center">
+              <h2 className="text-3xl font-bold mb-14">Welcome!</h2>
+              <p className="text-center mb-20 text-gray-300 text-lg leading-relaxed">
+                Your journey to secure and easy cryptocurrency management starts
+                here. Get ready to experience the future of finance.
+              </p>
+            </div>
+            <div className="flex justify-center">
               <button
                 className="primary-button py-3 px-10 rounded-lg text-center font-medium pulse-animation"
                 onClick={() => setStep(OnboardingStep.CREATE_OR_IMPORT)}
@@ -269,18 +311,18 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
         {/* Create or Import Step */}
         {step === OnboardingStep.CREATE_OR_IMPORT && (
-          <div className="stagger-fade-in">
+          <div className="stagger-fade-in pt-8 flex flex-col h-full">
             <h2 className="text-3xl font-bold text-center mb-16">
               Get Started
             </h2>
 
-            <div className="option-buttons flex flex-col gap-8">
+            <div className="option-buttons flex flex-col">
               <button
-                className="option-button primary-button flex items-center p-5 mb-10 rounded-lg hover:scale-105 transition-transform glow-effect"
+                className="option-button primary-button flex items-center p-5 rounded-lg hover:scale-105 transition-transform glow-effect"
                 onClick={handleCreateWallet}
               >
                 <LockIcon />
-                <div className="option-text ml-4 text-left">
+                <div className="option-text ml-4 text-left flex flex-col">
                   <span className="option-title block font-bold text-lg">
                     Create New Wallet
                   </span>
@@ -310,7 +352,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
         {/* Backup Seed Step */}
         {step === OnboardingStep.BACKUP_SEED && wallet?.mnemonic && (
-          <div className="fade-in">
+          <div className="fade-in pt-8">
             <div className="flex items-center justify-center gap-3 mb-10 text-amber-400">
               <WarningIcon />
               <h2 className="text-2xl font-bold">Important: Backup Required</h2>
@@ -333,33 +375,101 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                   !showSeed ? "filter blur-sm" : "stagger-fade-in"
                 }`}
               >
-                <div className="flex flex-col space-y-6">
-                  {/* Row 1 */}
-                  <div className="flex space-x-5">
-                    <div className="seed-word-container border border-gray-600 bg-gray-800 rounded-2xl p-3 text-center flex-1">
+                <div className="flex flex-col space-y-10">
+                  {/* Row 1: 1-3 */}
+                  <div className="flex space-x-8">
+                    <div className="seed-word-container border border-blue-700 bg-gray-900 rounded-2xl p-4 text-center flex-1">
                       <div className="flex flex-col items-center">
-                        <span className="text-gray-400 font-medium mb-1">
-                          01.
+                        <span className="text-blue-400 font-medium mb-1">
+                          1
                         </span>
                         <span className="font-medium text-white text-lg">
                           {wallet.mnemonic.split(" ")[0]}
                         </span>
                       </div>
                     </div>
-                    <div className="seed-word-container border border-gray-600 bg-gray-800 rounded-2xl p-3 text-center flex-1">
+                    <div className="seed-word-container border border-blue-700 bg-gray-900 rounded-2xl p-4 text-center flex-1">
                       <div className="flex flex-col items-center">
-                        <span className="text-gray-400 font-medium mb-1">
-                          05.
+                        <span className="text-blue-400 font-medium mb-1">
+                          2
+                        </span>
+                        <span className="font-medium text-white text-lg">
+                          {wallet.mnemonic.split(" ")[1]}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="seed-word-container border border-blue-700 bg-gray-900 rounded-2xl p-4 text-center flex-1">
+                      <div className="flex flex-col items-center">
+                        <span className="text-blue-400 font-medium mb-1">
+                          3
+                        </span>
+                        <span className="font-medium text-white text-lg">
+                          {wallet.mnemonic.split(" ")[2]}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Row 2: 4-6 */}
+                  <div className="flex space-x-8">
+                    <div className="seed-word-container border border-blue-700 bg-gray-900 rounded-2xl p-4 text-center flex-1">
+                      <div className="flex flex-col items-center">
+                        <span className="text-blue-400 font-medium mb-1">
+                          4
+                        </span>
+                        <span className="font-medium text-white text-lg">
+                          {wallet.mnemonic.split(" ")[3]}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="seed-word-container border border-blue-700 bg-gray-900 rounded-2xl p-4 text-center flex-1">
+                      <div className="flex flex-col items-center">
+                        <span className="text-blue-400 font-medium mb-1">
+                          5
                         </span>
                         <span className="font-medium text-white text-lg">
                           {wallet.mnemonic.split(" ")[4]}
                         </span>
                       </div>
                     </div>
-                    <div className="seed-word-container border border-gray-600 bg-gray-800 rounded-2xl p-3 text-center flex-1">
+                    <div className="seed-word-container border border-blue-700 bg-gray-900 rounded-2xl p-4 text-center flex-1">
                       <div className="flex flex-col items-center">
-                        <span className="text-gray-400 font-medium mb-1">
-                          09.
+                        <span className="text-blue-400 font-medium mb-1">
+                          6
+                        </span>
+                        <span className="font-medium text-white text-lg">
+                          {wallet.mnemonic.split(" ")[5]}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Row 3: 7-9 */}
+                  <div className="flex space-x-8">
+                    <div className="seed-word-container border border-blue-700 bg-gray-900 rounded-2xl p-4 text-center flex-1">
+                      <div className="flex flex-col items-center">
+                        <span className="text-blue-400 font-medium mb-1">
+                          7
+                        </span>
+                        <span className="font-medium text-white text-lg">
+                          {wallet.mnemonic.split(" ")[6]}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="seed-word-container border border-blue-700 bg-gray-900 rounded-2xl p-4 text-center flex-1">
+                      <div className="flex flex-col items-center">
+                        <span className="text-blue-400 font-medium mb-1">
+                          8
+                        </span>
+                        <span className="font-medium text-white text-lg">
+                          {wallet.mnemonic.split(" ")[7]}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="seed-word-container border border-blue-700 bg-gray-900 rounded-2xl p-4 text-center flex-1">
+                      <div className="flex flex-col items-center">
+                        <span className="text-blue-400 font-medium mb-1">
+                          9
                         </span>
                         <span className="font-medium text-white text-lg">
                           {wallet.mnemonic.split(" ")[8]}
@@ -368,100 +478,32 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                     </div>
                   </div>
 
-                  {/* Row 2 */}
-                  <div className="flex space-x-5">
-                    <div className="seed-word-container border border-gray-600 bg-gray-800 rounded-2xl p-3 text-center flex-1">
+                  {/* Row 4: 10-12 */}
+                  <div className="flex space-x-8">
+                    <div className="seed-word-container border border-blue-700 bg-gray-900 rounded-2xl p-4 text-center flex-1">
                       <div className="flex flex-col items-center">
-                        <span className="text-gray-400 font-medium mb-1">
-                          02.
-                        </span>
-                        <span className="font-medium text-white text-lg">
-                          {wallet.mnemonic.split(" ")[1]}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="seed-word-container border border-gray-600 bg-gray-800 rounded-2xl p-3 text-center flex-1">
-                      <div className="flex flex-col items-center">
-                        <span className="text-gray-400 font-medium mb-1">
-                          06.
-                        </span>
-                        <span className="font-medium text-white text-lg">
-                          {wallet.mnemonic.split(" ")[5]}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="seed-word-container border border-gray-600 bg-gray-800 rounded-2xl p-3 text-center flex-1">
-                      <div className="flex flex-col items-center">
-                        <span className="text-gray-400 font-medium mb-1">
-                          10.
+                        <span className="text-blue-400 font-medium mb-1">
+                          10
                         </span>
                         <span className="font-medium text-white text-lg">
                           {wallet.mnemonic.split(" ")[9]}
                         </span>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Row 3 */}
-                  <div className="flex space-x-5">
-                    <div className="seed-word-container border border-gray-600 bg-gray-800 rounded-2xl p-3 text-center flex-1">
+                    <div className="seed-word-container border border-blue-700 bg-gray-900 rounded-2xl p-4 text-center flex-1">
                       <div className="flex flex-col items-center">
-                        <span className="text-gray-400 font-medium mb-1">
-                          03.
-                        </span>
-                        <span className="font-medium text-white text-lg">
-                          {wallet.mnemonic.split(" ")[2]}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="seed-word-container border border-gray-600 bg-gray-800 rounded-2xl p-3 text-center flex-1">
-                      <div className="flex flex-col items-center">
-                        <span className="text-gray-400 font-medium mb-1">
-                          07.
-                        </span>
-                        <span className="font-medium text-white text-lg">
-                          {wallet.mnemonic.split(" ")[6]}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="seed-word-container border border-gray-600 bg-gray-800 rounded-2xl p-3 text-center flex-1">
-                      <div className="flex flex-col items-center">
-                        <span className="text-gray-400 font-medium mb-1">
-                          11.
+                        <span className="text-blue-400 font-medium mb-1">
+                          11
                         </span>
                         <span className="font-medium text-white text-lg">
                           {wallet.mnemonic.split(" ")[10]}
                         </span>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Row 4 */}
-                  <div className="flex space-x-5">
-                    <div className="seed-word-container border border-gray-600 bg-gray-800 rounded-2xl p-3 text-center flex-1">
+                    <div className="seed-word-container border border-blue-700 bg-gray-900 rounded-2xl p-4 text-center flex-1">
                       <div className="flex flex-col items-center">
-                        <span className="text-gray-400 font-medium mb-1">
-                          04.
-                        </span>
-                        <span className="font-medium text-white text-lg">
-                          {wallet.mnemonic.split(" ")[3]}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="seed-word-container border border-gray-600 bg-gray-800 rounded-2xl p-3 text-center flex-1">
-                      <div className="flex flex-col items-center">
-                        <span className="text-gray-400 font-medium mb-1">
-                          08.
-                        </span>
-                        <span className="font-medium text-white text-lg">
-                          {wallet.mnemonic.split(" ")[7]}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="seed-word-container border border-gray-600 bg-gray-800 rounded-2xl p-3 text-center flex-1">
-                      <div className="flex flex-col items-center">
-                        <span className="text-gray-400 font-medium mb-1">
-                          12.
+                        <span className="text-blue-400 font-medium mb-1">
+                          12
                         </span>
                         <span className="font-medium text-white text-lg">
                           {wallet.mnemonic.split(" ")[11]}
@@ -475,7 +517,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               {!showSeed && (
                 <div className="absolute inset-0 flex items-center justify-center flex-col bg-gray-800 bg-opacity-90 rounded-lg">
                   <button
-                    className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 py-3 px-6 rounded-lg transition-colors"
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 py-3 px-6 rounded-lg transition-colors"
                     onClick={() => setShowSeed(true)}
                   >
                     <EyeIcon /> Show Recovery Phrase
@@ -515,7 +557,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
         {/* Verify Seed Step */}
         {step === OnboardingStep.VERIFY_SEED && wallet?.mnemonic && (
-          <div className="fade-in">
+          <div className="fade-in pt-8">
             <h2 className="text-2xl font-bold text-center mb-8">
               Verify Recovery Phrase
             </h2>
@@ -528,7 +570,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               {selectedWords.map((word, i) => (
                 <div
                   key={i}
-                  className="seed-word bg-blue-500 bg-opacity-20 border border-blue-500 px-4 py-2 rounded-full text-sm font-medium"
+                  className="seed-word bg-blue-600 border border-blue-500 px-4 py-2 rounded-full text-sm font-medium"
                   onClick={() => handleWordSelect(word)}
                 >
                   {word}
@@ -543,8 +585,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                   className={`seed-word px-3 py-3 rounded-lg text-sm font-medium transition-all border
                     ${
                       selectedWords.includes(word)
-                        ? "bg-blue-500 bg-opacity-20 border-blue-500 opacity-50"
-                        : "bg-gray-700 border-gray-600 hover:bg-gray-600 hover:scale-105"
+                        ? "bg-blue-600 border-blue-500 opacity-50"
+                        : "bg-gray-900 border-blue-700 hover:bg-blue-900 hover:scale-105"
                     }`}
                   onClick={() => handleWordSelect(word)}
                   disabled={selectedWords.includes(word)}
@@ -574,7 +616,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
         {/* Import Wallet Step */}
         {step === OnboardingStep.IMPORT_WALLET && (
-          <div className="fade-in">
+          <div className="fade-in pt-8">
             <h2 className="text-2xl font-bold text-center mb-14">
               Import Wallet
             </h2>
@@ -608,13 +650,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               </div>
             )}
 
-            <div className="flex justify-between gap-4 mt-16">
-              <button
-                className="secondary-button py-3 px-6 rounded-lg"
-                onClick={() => setStep(OnboardingStep.CREATE_OR_IMPORT)}
-              >
-                Back
-              </button>
+            <div className="flex justify-end mt-16">
               <button
                 className="primary-button py-3 px-6 rounded-lg"
                 onClick={handleImportWallet}
