@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -19,10 +21,12 @@
   --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
   --transition-fast: 0.15s ease;
   --transition-normal: 0.3s ease;
+  --font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont,
+    sans-serif;
 }
 
 body {
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-family);
   background: radial-gradient(
       circle at 10% 20%,
       rgba(59, 130, 246, 0.1) 0%,
@@ -46,6 +50,8 @@ body {
   background-attachment: fixed;
   position: relative;
   overflow-x: hidden;
+  font-weight: 400;
+  letter-spacing: -0.01em;
 }
 
 /* Add this for a subtle mesh grid pattern overlay */
@@ -112,6 +118,8 @@ body::before {
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
   min-width: 120px;
   font-size: 0.95rem;
+  letter-spacing: 0.01em;
+  font-family: var(--font-family);
 }
 
 .primary-button:hover {
@@ -141,6 +149,8 @@ body::before {
   transition: all var(--transition-fast);
   min-width: 120px;
   font-size: 0.95rem;
+  font-family: var(--font-family);
+  letter-spacing: 0.01em;
 }
 
 .secondary-button:hover {
@@ -275,18 +285,27 @@ h3,
 h4 {
   margin-top: 0;
   color: var(--text-primary);
+  font-family: var(--font-family);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 
 h1 {
-  font-size: 2rem;
+  font-size: 2.25rem;
   font-weight: 700;
   margin-bottom: 1.5rem;
 }
 
 h2 {
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   font-weight: 600;
   margin-bottom: 1.25rem;
+}
+
+h3 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
 }
 
 /* Flex utilities */
@@ -486,25 +505,37 @@ main {
 
 .seed-word-container {
   min-width: 110px;
-  min-height: 65px;
+  min-height: 70px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   transition: all 0.2s ease;
   width: 100%;
-  background-color: rgba(32, 36, 44, 0.8) !important;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-  border-color: rgba(75, 85, 99, 0.6) !important;
+  background-color: #121624 !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  border-color: rgba(59, 130, 246, 0.5) !important;
   border-radius: 16px !important;
-  padding: 10px 12px;
+  padding: 12px 15px;
+  font-family: var(--font-family);
+}
+
+.seed-word-container .text-blue-400 {
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+.seed-word-container .text-white {
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 .seed-word-container:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(59, 130, 246, 0.2);
-  border-color: rgba(96, 165, 250, 0.5) !important;
-  background-color: rgba(42, 46, 54, 0.9) !important;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(59, 130, 246, 0.4);
+  border-color: rgba(96, 165, 250, 0.8) !important;
+  background-color: #1a2035 !important;
 }
 
 .seed-words {
@@ -546,6 +577,9 @@ textarea {
   width: 100%;
   outline: none;
   transition: border-color 0.2s ease;
+  font-family: var(--font-family);
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
 }
 
 input:focus,
@@ -703,4 +737,18 @@ p.text-center.text-gray-400 {
 
 .flex.justify-between {
   margin-top: 2.5rem !important;
+}
+
+/* Style for paragraph text */
+p {
+  font-family: var(--font-family);
+  line-height: 1.6;
+}
+
+/* Style for seed words in verification step */
+.word-options button,
+.selected-words div {
+  font-family: var(--font-family);
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
