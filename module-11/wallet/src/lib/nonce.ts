@@ -1,4 +1,4 @@
-// nonce.ts - handles transaction nonce management
+
 import { getCurrentNetworkRPC } from './network';
 
 // in-memory nonce cache for optimistic nonce management

@@ -1,5 +1,6 @@
-
 // supported networks
+export type NetworkName = keyof typeof networks;
+
 export const networks = {
   sepolia: {
     name: 'Sepolia Testnet',
@@ -11,7 +12,7 @@ export const networks = {
 };
 
 // current network (default to sepolia)
-let currentNetwork = 'sepolia';
+let currentNetwork: NetworkName = 'sepolia';
 
 /**
  * gets the rpc endpoint for the current network
@@ -37,7 +38,7 @@ export function getBlockExplorer(): string {
 /**
  * changes the current network
  */
-export function setNetwork(network: string): void {
+export function setNetwork(network: NetworkName): void {
   if (!networks[network]) {
     throw new Error(`Network ${network} not supported`);
   }

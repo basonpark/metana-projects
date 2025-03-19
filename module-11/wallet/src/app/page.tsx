@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import CreateWallet from "../components/CreateWallet";
+import Onboarding from "../components/Onboarding";
 import AccountInfo from "../components/AccountInfo";
 import SendTransaction from "../components/SendTransaction";
 import TransactionHistory from "../components/TransactionHistory";
@@ -13,13 +13,19 @@ export default function Home() {
   const [balance, setBalance] = useState<string>("0x0");
   const [showSend, setShowSend] = useState(false);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
 
   // Load wallet from localStorage on mount
   useEffect(() => {
     const savedWallet = localStorage.getItem("wallet");
+    const onboardingComplete = localStorage.getItem("onboardingComplete");
+
     if (savedWallet) {
       try {
         setWallet(JSON.parse(savedWallet));
+        if (onboardingComplete === "true") {
+          setHasCompletedOnboarding(true);
+        }
       } catch (e) {
         console.error("Failed to parse saved wallet", e);
       }
@@ -76,8 +82,10 @@ export default function Home() {
     }
   }, [wallet]);
 
-  const handleWalletCreated = (newWallet: Wallet) => {
+  const handleOnboardingComplete = (newWallet: Wallet) => {
     setWallet(newWallet);
+    setHasCompletedOnboarding(true);
+    localStorage.setItem("onboardingComplete", "true");
   };
 
   const handleSendSuccess = () => {
@@ -89,8 +97,8 @@ export default function Home() {
   return (
     <main className="min-h-screen p-4 md:p-8">
       <div className="container mx-auto max-w-3xl">
-        {!wallet ? (
-          <CreateWallet onWalletCreated={handleWalletCreated} />
+        {!wallet || !hasCompletedOnboarding ? (
+          <Onboarding onComplete={handleOnboardingComplete} />
         ) : (
           <>
             <AccountInfo
