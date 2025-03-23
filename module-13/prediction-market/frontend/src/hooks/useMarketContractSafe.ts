@@ -18,7 +18,9 @@ import {
   Outcome,
   MarketStatus,
   MarketWithMetadata,
-  CreateMarketParams
+  CreateMarketParams,
+  UserPosition,
+  ClaimableReward
 } from '@/types/contracts';
 
 /**
@@ -63,7 +65,8 @@ export function useMarketContractSafe() {
   ): Promise<MarketWithMetadata[]> => {
     if (!isMounted) return [];
     if (!factoryAddress || !safePublicClient) {
-      throw new Error('Factory address or public client not available');
+      console.warn('Factory address or public client not available');
+      return [];
     }
     
     try {
@@ -140,7 +143,8 @@ export function useMarketContractSafe() {
   ): Promise<MarketWithMetadata[]> => {
     if (!isMounted) return [];
     if (!factoryAddress || !safePublicClient) {
-      throw new Error('Factory address or public client not available');
+      console.warn('Factory address or public client not available');
+      return [];
     }
     
     try {
@@ -206,7 +210,8 @@ export function useMarketContractSafe() {
   ): Promise<MarketWithMetadata | null> => {
     if (!isMounted) return null;
     if (!safePublicClient) {
-      throw new Error('Public client not available');
+      console.warn('Public client not available');
+      return null;
     }
     
     try {
@@ -261,7 +266,8 @@ export function useMarketContractSafe() {
   ): Promise<any> => {
     if (!isMounted) return null;
     if (!factoryAddress || !walletClient || !userAddress || !safePublicClient) {
-      throw new Error('Factory address, wallet client, or user address not available');
+      console.warn('Factory address, wallet client, or user address not available');
+      return null;
     }
     
     try {
@@ -309,7 +315,8 @@ export function useMarketContractSafe() {
   ): Promise<boolean> => {
     if (!isMounted) return false;
     if (!walletClient || !userAddress || !safePublicClient) {
-      throw new Error('Wallet client or user address not available');
+      console.warn('Wallet client or user address not available');
+      return false;
     }
     
     try {
@@ -347,7 +354,8 @@ export function useMarketContractSafe() {
   ): Promise<boolean> => {
     if (!isMounted) return false;
     if (!walletClient || !userAddress || !safePublicClient) {
-      throw new Error('Wallet client or user address not available');
+      console.warn('Wallet client or user address not available');
+      return false;
     }
     
     try {
@@ -379,7 +387,8 @@ export function useMarketContractSafe() {
   const getCategories = useCallback(async (): Promise<string[]> => {
     if (!isMounted) return [];
     if (!factoryAddress || !safePublicClient) {
-      throw new Error('Factory address or public client not available');
+      console.warn('Factory address or public client not available');
+      return [];
     }
     
     try {
@@ -404,41 +413,48 @@ export function useMarketContractSafe() {
     }
   }, [isMounted, factoryAddress, safePublicClient]);
 
-  const getLatestPrice = useCallback(async (
-    dataFeedId: string
-  ): Promise<string | null> => {
-    if (!isMounted) return null;
+  const getLatestPrice = useCallback(async (dataFeedId: string): Promise<number> => {
+    if (!isMounted) return 0;
     if (!dataFeedAddress || !safePublicClient) {
-      throw new Error('Data feed address or public client not available');
+      console.warn('Data feed address or public client not available');
+      return 0;
     }
     
     try {
-      // Get the latest price from Chainlink
-      const price = await safePublicClient.readContract({
+      setIsLoading(true);
+      setError(null);
+      
+      // Call the data feed contract to get the latest price
+      const priceData = await safePublicClient.readContract({
         address: dataFeedAddress as `0x${string}`,
         abi: ChainlinkDataFeedABI.abi,
         functionName: 'getLatestPrice',
-        args: [dataFeedId as `0x${string}`]
+        args: [dataFeedId]
       });
       
-      return (price as bigint).toString();
+      // Convert price to number (assuming it returns a BigInt or string)
+      const price = typeof priceData === 'bigint' 
+        ? Number(priceData) 
+        : typeof priceData === 'string' 
+          ? parseFloat(priceData) 
+          : 0;
+      
+      return price;
     } catch (err) {
       console.error(`Error fetching price for data feed ${dataFeedId}:`, err);
-      return null;
+      return 0;
     }
   }, [isMounted, dataFeedAddress, safePublicClient]);
   
   const getMarketsCreatedByUser = useCallback(async (
+    userAddr: string = userAddress || '',
     offset = 0,
     limit = 10
   ): Promise<MarketWithMetadata[]> => {
     if (!isMounted) return [];
-    if (!factoryAddress || !safePublicClient || !isConnected || !userAddress) {
-      if (!isConnected || !userAddress) {
-        setError('Wallet not connected');
-        return [];
-      }
-      throw new Error('Factory address or public client not available');
+    if (!factoryAddress || !safePublicClient) {
+      console.warn('Factory address or public client not available');
+      return [];
     }
     
     try {
@@ -450,7 +466,7 @@ export function useMarketContractSafe() {
         address: factoryAddress as `0x${string}`,
         abi: PredictionMarketFactoryABI.abi,
         functionName: 'getMarketsByCreator',
-        args: [userAddress, BigInt(offset), BigInt(limit)]
+        args: [userAddr, BigInt(offset), BigInt(limit)]
       });
       
       if (!marketAddresses || (marketAddresses as string[]).length === 0) {
@@ -491,43 +507,80 @@ export function useMarketContractSafe() {
     }
   }, [isMounted, factoryAddress, safePublicClient, isConnected, userAddress]);
   
-  const getUserPositions = useCallback(async () => {
+  const getUserPositions = useCallback(async (
+    userAddr: string = userAddress || ''
+  ): Promise<UserPosition[]> => {
     if (!isMounted) return [];
-    if (!factoryAddress || !safePublicClient || !isConnected || !userAddress) {
-      if (!isConnected || !userAddress) {
-        setError('Wallet not connected');
-        return [];
-      }
-      throw new Error('Factory address or public client not available');
+    if (!factoryAddress || !safePublicClient) {
+      console.warn('Factory address or public client not available');
+      return [];
     }
     
     try {
       setIsLoading(true);
       setError(null);
       
-      // Get some sample positions for demo purposes
+      // For demo purposes, create mock UserPosition objects that match the interface
+      const mockMarket1: MarketWithMetadata = {
+        id: 1,
+        address: "0x123",
+        question: "Will BTC exceed $100k in 2024?",
+        creationTime: Math.floor(Date.now() / 1000) - 86400 * 30, // 30 days ago
+        expirationTime: Math.floor(Date.now() / 1000) + 86400 * 60, // 60 days from now
+        settlementTime: 0,
+        oracle: "0x000",
+        dataFeedId: "0x000",
+        threshold: 100000,
+        totalYesAmount: "100000",
+        totalNoAmount: "50000",
+        status: MarketStatus.Open,
+        outcome: Outcome.NoOutcome,
+        category: "Crypto",
+        creator: "0x000",
+        fee: 100, // 1%
+        liquidity: "150000",
+        timeRemaining: "60 days remaining",
+        yesPrice: 0.67,
+        noPrice: 0.33
+      };
+      
+      const mockMarket2: MarketWithMetadata = {
+        id: 2,
+        address: "0x456",
+        question: "Will ETH 2.0 launch before Q3 2024?",
+        creationTime: Math.floor(Date.now() / 1000) - 86400 * 15, // 15 days ago
+        expirationTime: Math.floor(Date.now() / 1000) + 86400 * 45, // 45 days from now
+        settlementTime: 0,
+        oracle: "0x000",
+        dataFeedId: "0x000",
+        threshold: 0,
+        totalYesAmount: "80000",
+        totalNoAmount: "120000",
+        status: MarketStatus.Open,
+        outcome: Outcome.NoOutcome,
+        category: "Crypto",
+        creator: "0x000",
+        fee: 100, // 1%
+        liquidity: "200000",
+        timeRemaining: "45 days remaining",
+        yesPrice: 0.4,
+        noPrice: 0.6
+      };
+      
       return [
         {
-          marketId: "0x123",
-          marketTitle: "Will BTC exceed $100k in 2024?",
-          outcome: "Yes",
-          shares: "100",
-          value: "120.50",
-          entryPrice: "0.65",
-          currentPrice: "0.75",
-          pnl: "+15%",
-          isProfitable: true
+          market: mockMarket1,
+          betAmount: "100",
+          prediction: Outcome.Yes,
+          potentialWinnings: "150",
+          claimed: false
         },
         {
-          marketId: "0x456",
-          marketTitle: "Will ETH 2.0 launch before Q3 2024?",
-          outcome: "No",
-          shares: "50",
-          value: "45.25",
-          entryPrice: "0.40",
-          currentPrice: "0.35",
-          pnl: "-12%",
-          isProfitable: false
+          market: mockMarket2,
+          betAmount: "50",
+          prediction: Outcome.No,
+          potentialWinnings: "83.33",
+          claimed: false
         }
       ];
     } catch (err) {
@@ -540,33 +593,32 @@ export function useMarketContractSafe() {
     }
   }, [isMounted, factoryAddress, safePublicClient, isConnected, userAddress]);
   
-  const getClaimableRewards = useCallback(async () => {
+  const getClaimableRewards = useCallback(async (
+    userAddr: string = userAddress || ''
+  ): Promise<ClaimableReward[]> => {
     if (!isMounted) return [];
-    if (!factoryAddress || !safePublicClient || !isConnected || !userAddress) {
-      if (!isConnected || !userAddress) {
-        setError('Wallet not connected');
-        return [];
-      }
-      throw new Error('Factory address or public client not available');
+    if (!factoryAddress || !safePublicClient) {
+      console.warn('Factory address or public client not available');
+      return [];
     }
     
     try {
       setIsLoading(true);
       setError(null);
       
-      // Get some sample rewards for demo purposes
+      // For demo purposes, return mock ClaimableReward objects that match the interface
       return [
         {
-          marketId: "0x789",
-          marketTitle: "Will the Federal Reserve cut rates in Q2 2024?",
+          marketAddress: "0x789",
+          marketQuestion: "Will the Federal Reserve cut rates in Q2 2024?",
           amount: "35.75",
-          outcome: "Yes"
+          outcome: Outcome.Yes
         },
         {
-          marketId: "0xabc",
-          marketTitle: "Will Tesla stock exceed $300 by August 2024?",
+          marketAddress: "0xabc",
+          marketQuestion: "Will Tesla stock exceed $300 by August 2024?",
           amount: "12.20",
-          outcome: "No"
+          outcome: Outcome.No
         }
       ];
     } catch (err) {
@@ -636,7 +688,7 @@ export function useMarketContractSafe() {
       placeBet: async () => false,
       claimReward: async () => false,
       getCategories: async () => [],
-      getLatestPrice: async () => null,
+      getLatestPrice: async () => 0,
       getMarketsCreatedByUser: async () => [],
       getUserPositions: async () => [],
       getClaimableRewards: async () => [],

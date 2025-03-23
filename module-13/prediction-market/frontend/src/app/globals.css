@@ -1,26 +1,466 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+/* Keep Google Fonts as fallback, but we'll now primarily use our local files */
+@custom-variant dark (&:is(.dark *));
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Base Bricolage Grotesque */
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/fonts/BricolageGrotesque-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/fonts/BricolageGrotesque-Light.ttf") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/fonts/BricolageGrotesque-ExtraLight.ttf") format("truetype");
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/fonts/BricolageGrotesque-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/fonts/BricolageGrotesque-SemiBold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/fonts/BricolageGrotesque-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/fonts/BricolageGrotesque-ExtraBold.ttf") format("truetype");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Condensed variants */
+@font-face {
+  font-family: "Bricolage Grotesque Condensed";
+  src: url("/fonts/BricolageGrotesque_Condensed-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque Condensed";
+  src: url("/fonts/BricolageGrotesque_Condensed-Light.ttf") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque Condensed";
+  src: url("/fonts/BricolageGrotesque_Condensed-ExtraLight.ttf")
+    format("truetype");
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque Condensed";
+  src: url("/fonts/BricolageGrotesque_Condensed-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque Condensed";
+  src: url("/fonts/BricolageGrotesque_Condensed-SemiBold.ttf")
+    format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque Condensed";
+  src: url("/fonts/BricolageGrotesque_Condensed-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque Condensed";
+  src: url("/fonts/BricolageGrotesque_Condensed-ExtraBold.ttf")
+    format("truetype");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Semi-Condensed variants */
+@font-face {
+  font-family: "Bricolage Grotesque SemiCondensed";
+  src: url("/fonts/BricolageGrotesque_SemiCondensed-Regular.ttf")
+    format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque SemiCondensed";
+  src: url("/fonts/BricolageGrotesque_SemiCondensed-Light.ttf")
+    format("truetype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque SemiCondensed";
+  src: url("/fonts/BricolageGrotesque_SemiCondensed-ExtraLight.ttf")
+    format("truetype");
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque SemiCondensed";
+  src: url("/fonts/BricolageGrotesque_SemiCondensed-Medium.ttf")
+    format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque SemiCondensed";
+  src: url("/fonts/BricolageGrotesque_SemiCondensed-SemiBold.ttf")
+    format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque SemiCondensed";
+  src: url("/fonts/BricolageGrotesque_SemiCondensed-Bold.ttf")
+    format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque SemiCondensed";
+  src: url("/fonts/BricolageGrotesque_SemiCondensed-ExtraBold.ttf")
+    format("truetype");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Display variants (24pt, 36pt, 48pt, 72pt) */
+/* 24pt */
+@font-face {
+  font-family: "Bricolage Grotesque Display";
+  src: url("/fonts/BricolageGrotesque_24pt-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-variation-settings: "opsz" 24;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque Display";
+  src: url("/fonts/BricolageGrotesque_24pt-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-variation-settings: "opsz" 24;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* 36pt */
+@font-face {
+  font-family: "Bricolage Grotesque Display";
+  src: url("/fonts/BricolageGrotesque_36pt-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-variation-settings: "opsz" 36;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque Display";
+  src: url("/fonts/BricolageGrotesque_36pt-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-variation-settings: "opsz" 36;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* 48pt */
+@font-face {
+  font-family: "Bricolage Grotesque Display";
+  src: url("/fonts/BricolageGrotesque_48pt-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-variation-settings: "opsz" 48;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque Display";
+  src: url("/fonts/BricolageGrotesque_48pt-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-variation-settings: "opsz" 48;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* 72pt */
+@font-face {
+  font-family: "Bricolage Grotesque Display";
+  src: url("/fonts/BricolageGrotesque_72pt-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-variation-settings: "opsz" 72;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Bricolage Grotesque Display";
+  src: url("/fonts/BricolageGrotesque_72pt-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-variation-settings: "opsz" 72;
+  font-style: normal;
+  font-display: swap;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-bricolage);
+  --font-display: var(--font-bricolage-display);
+  --font-condensed: var(--font-bricolage-condensed);
+  --font-semicondensed: var(--font-bricolage-semicondensed);
   --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --radius: 0.625rem;
+  --font-bricolage: "Bricolage Grotesque", system-ui, sans-serif;
+  --font-bricolage-display: "Bricolage Grotesque Display", "Bricolage Grotesque",
+    system-ui, sans-serif;
+  --font-bricolage-condensed: "Bricolage Grotesque Condensed",
+    "Bricolage Grotesque", system-ui, sans-serif;
+  --font-bricolage-semicondensed: "Bricolage Grotesque SemiCondensed",
+    "Bricolage Grotesque", system-ui, sans-serif;
+
+  /* Clean black and neutral color scheme */
+  --background: oklch(0.99 0 0);
+  --foreground: oklch(0.1 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.1 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.1 0 0);
+  --primary: oklch(0.2 0.02 0);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.9 0.02 0);
+  --secondary-foreground: oklch(0.2 0.02 0);
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.5 0.02 0);
+  --accent: oklch(0.85 0.04 0);
+  --accent-foreground: oklch(0.1 0 0);
+  --destructive: oklch(0.6 0.25 30);
+  --border: oklch(0.85 0.01 0);
+  --input: oklch(0.85 0.01 0);
+  --ring: oklch(0.5 0.03 0);
+
+  /* Chart colors with more neutral tones */
+  --chart-1: oklch(0.2 0.06 0);
+  --chart-2: oklch(0.4 0.05 0);
+  --chart-3: oklch(0.6 0.04 0);
+  --chart-4: oklch(0.8 0.03 0);
+  --chart-5: oklch(0.7 0.18 30);
+
+  /* Sidebar colors */
+  --sidebar: oklch(0.98 0 0);
+  --sidebar-foreground: oklch(0.1 0 0);
+  --sidebar-primary: oklch(0.2 0.02 0);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.85 0.04 0);
+  --sidebar-accent-foreground: oklch(0.1 0 0);
+  --sidebar-border: oklch(0.85 0.01 0);
+  --sidebar-ring: oklch(0.5 0.03 0);
+
+  /* Enhanced shadows for depth and modernism */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05), 0 1px 1px rgba(0, 0, 0, 0.07);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.05), 0 4px 8px rgba(0, 0, 0, 0.07);
+  --shadow-xl: 0 20px 30px rgba(0, 0, 0, 0.05), 0 10px 15px rgba(0, 0, 0, 0.07);
+}
+
+.dark {
+  /* Modern dark black theme */
+  --background: oklch(0.1 0 0);
+  --foreground: oklch(0.95 0 0);
+  --card: oklch(0.15 0 0);
+  --card-foreground: oklch(0.95 0 0);
+  --popover: oklch(0.15 0 0);
+  --popover-foreground: oklch(0.95 0 0);
+  --primary: oklch(0.7 0.03 0);
+  --primary-foreground: oklch(0.15 0 0);
+  --secondary: oklch(0.25 0.02 0);
+  --secondary-foreground: oklch(0.95 0 0);
+  --muted: oklch(0.2 0 0);
+  --muted-foreground: oklch(0.7 0.02 0);
+  --accent: oklch(0.3 0.03 0);
+  --accent-foreground: oklch(0.95 0 0);
+  --destructive: oklch(0.7 0.25 30);
+  --border: oklch(1 0.02 0 / 20%);
+  --input: oklch(1 0.02 0 / 20%);
+  --ring: oklch(0.6 0.03 0);
+
+  /* Chart colors for dark mode with better contrast */
+  --chart-1: oklch(0.7 0.06 0);
+  --chart-2: oklch(0.6 0.05 0);
+  --chart-3: oklch(0.75 0.18 30);
+  --chart-4: oklch(0.8 0.04 0);
+  --chart-5: oklch(0.5 0.03 0);
+
+  /* Sidebar colors for dark mode */
+  --sidebar: oklch(0.15 0 0);
+  --sidebar-foreground: oklch(0.95 0 0);
+  --sidebar-primary: oklch(0.7 0.03 0);
+  --sidebar-primary-foreground: oklch(0.15 0 0);
+  --sidebar-accent: oklch(0.3 0.03 0);
+  --sidebar-accent-foreground: oklch(0.95 0 0);
+  --sidebar-border: oklch(1 0.02 0 / 20%);
+  --sidebar-ring: oklch(0.6 0.03 0);
+
+  /* Enhanced shadows for dark mode */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 1px 1px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.35), 0 2px 4px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.35), 0 4px 8px rgba(0, 0, 0, 0.45);
+  --shadow-xl: 0 20px 30px rgba(0, 0, 0, 0.35), 0 10px 15px rgba(0, 0, 0, 0.45);
+}
+
+/* Utility classes for the different font variants */
+.font-display {
+  font-family: var(--font-bricolage-display);
+}
+
+.font-condensed {
+  font-family: var(--font-bricolage-condensed);
+}
+
+.font-semicondensed {
+  font-family: var(--font-bricolage-semicondensed);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display tracking-tighter;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Aurora background animation */
+@keyframes aurora {
+  0% {
+    background-position: 0% 0%, 0% 0%;
+  }
+  50% {
+    background-position: 100% 100%, 100% 100%;
+  }
+  100% {
+    background-position: 0% 0%, 0% 0%;
+  }
+}
+
+.animate-aurora {
+  animation: aurora 10s ease infinite;
+}
+
+:root {
+  --white: #ffffff;
+  --black: #000000;
+  --transparent: transparent;
+  --blue-300: #93c5fd;
+  --blue-400: #60a5fa;
+  --blue-500: #3b82f6;
+  --indigo-300: #a5b4fc;
+  --violet-200: #ddd6fe;
 }

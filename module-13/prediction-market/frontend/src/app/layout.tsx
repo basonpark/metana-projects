@@ -14,8 +14,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Prediction Market Platform",
-  description: "A decentralized platform for prediction markets",
+  title: "Prophit | Prediction Market Platform",
+  description:
+    "See the future, seize the profit - A decentralized platform for prediction markets",
+  icons: {
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+  },
 };
 
 export default function RootLayout({

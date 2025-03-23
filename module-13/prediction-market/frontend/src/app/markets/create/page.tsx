@@ -5,7 +5,7 @@ import { RootLayout } from "@/components/layout/RootLayout";
 import { useMarketContractSafe } from "@/hooks/useMarketContractSafe";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { InfoCircle, Clock, DollarSign, Calendar } from "lucide-react";
+import { Info, Clock, DollarSign, Calendar } from "lucide-react";
 
 export default function CreateMarketPage() {
   const router = useRouter();
@@ -139,12 +139,10 @@ export default function CreateMarketPage() {
 
       const marketParams = {
         question: formState.title,
-        description: formState.description,
         category: finalCategory,
-        resolutionTime: resolutionTimestamp.toString(),
+        expirationTime: resolutionTimestamp,
         dataFeedId: formState.dataFeedId || "0", // Default to 0 if not provided
-        targetPrice: formState.targetPrice || "0", // Default to 0 if not provided
-        initialLiquidity: parseFloat(formState.initialLiquidity),
+        threshold: parseFloat(formState.targetPrice) || 0, // Map targetPrice to threshold
         fee: parseFloat(formState.fee) / 100, // Convert to decimal
       };
 
@@ -557,7 +555,7 @@ export default function CreateMarketPage() {
 
         <div className="mt-8 bg-muted p-4 rounded-lg border border-border">
           <div className="flex items-start mb-2">
-            <InfoCircle className="h-5 w-5 text-muted-foreground mr-2 mt-0.5" />
+            <Info className="h-5 w-5 text-muted-foreground mr-2 mt-0.5" />
             <h3 className="font-medium">About Creating Markets</h3>
           </div>
           <ul className="space-y-2 text-sm text-muted-foreground ml-7 list-disc">

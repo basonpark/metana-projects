@@ -18,13 +18,14 @@ export function RootLayout({ children }: RootLayoutProps) {
               fill="none"
               className="h-8 w-8 text-primary"
               stroke="currentColor"
-              strokeWidth="2"
+              strokeWidth="1.5"
             >
-              <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-              <path d="M16 12l-4 4-4-4" />
-              <path d="M12 16V8" />
+              <path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6-10-6-10-6z" />
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 10v4" strokeLinecap="round" />
+              <path d="M10 12h4" strokeLinecap="round" />
             </svg>
-            <span className="text-xl font-bold">PredictX</span>
+            <span className="text-xl font-bold">Prophit</span>
           </div>
         }
       />
@@ -33,10 +34,10 @@ export function RootLayout({ children }: RootLayoutProps) {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
-              <h3 className="font-semibold mb-3">PredictX</h3>
+              <h3 className="font-semibold mb-3">Prophit</h3>
               <p className="text-sm text-muted-foreground">
-                A decentralized prediction market platform powered by blockchain
-                technology.
+                See the future, seize the profit - A decentralized prediction
+                market powered by blockchain technology.
               </p>
             </div>
             <div>
@@ -136,7 +137,7 @@ export function RootLayout({ children }: RootLayoutProps) {
             </div>
           </div>
           <div className="mt-8 pt-4 border-t border-border text-center text-sm text-muted-foreground">
-            © {new Date().getFullYear()} PredictX. All rights reserved.
+            © {new Date().getFullYear()} Prophit. All rights reserved.
           </div>
         </div>
       </footer>

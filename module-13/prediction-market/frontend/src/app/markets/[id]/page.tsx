@@ -255,10 +255,14 @@ export default function MarketDetailPage() {
                           </span>
                         </div>
 
-                        <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                        <div className="h-2 w-full rounded-full overflow-hidden flex">
                           <div
-                            className="h-full bg-primary rounded-full"
+                            className="h-full bg-primary rounded-l-full"
                             style={{ width: `${market.yesPrice * 100}%` }}
+                          />
+                          <div
+                            className="h-full bg-muted-foreground/30 rounded-r-full"
+                            style={{ width: `${market.noPrice * 100}%` }}
                           />
                         </div>
 
@@ -285,10 +289,14 @@ export default function MarketDetailPage() {
                           </span>
                         </div>
 
-                        <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                        <div className="h-2 w-full rounded-full overflow-hidden flex">
                           <div
-                            className="h-full bg-red-500 rounded-full"
+                            className="h-full bg-muted-foreground/30 rounded-l-full"
                             style={{ width: `${market.noPrice * 100}%` }}
+                          />
+                          <div
+                            className="h-full bg-primary rounded-r-full"
+                            style={{ width: `${market.yesPrice * 100}%` }}
                           />
                         </div>
 
@@ -408,7 +416,7 @@ export default function MarketDetailPage() {
                 <div className="space-y-6">
                   <div className="space-y-4">
                     <h3 className="text-lg font-medium">Market Description</h3>
-                    <div className="text-muted-foreground whitespace-pre-line">
+                    <div className="text-muted-foreground whitespace-pre-line font-light">
                       {market.description}
                     </div>
                   </div>

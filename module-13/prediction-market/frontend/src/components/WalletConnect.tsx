@@ -2,11 +2,22 @@
 
 import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { useState, useEffect } from "react";
-import { Wallet } from "lucide-react";
+import { Wallet, Check, ChevronsUpDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { type Connector } from "wagmi";
 
 export function WalletConnect() {
   const { address, isConnected } = useAccount();
-  const { connect, connectors, error } = useConnect();
+  const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -27,7 +38,6 @@ export function WalletConnect() {
     if (connector) {
       connect({ connector });
     }
-    setIsMenuOpen(false);
   };
 
   // Render a consistent DOM structure regardless of connection state
@@ -36,52 +46,50 @@ export function WalletConnect() {
     <div className="relative">
       {mounted && isConnected && address ? (
         // Connected state - only rendered after mounting on client
-        <div className="flex items-center">
-          <div className="mr-3 py-1 px-3 bg-primary/10 text-primary rounded-lg text-sm">
-            {formatAddress(address)}
-          </div>
-          <button
-            onClick={() => disconnect()}
-            className="py-2 px-4 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg text-sm font-medium"
+        <div className="flex items-center gap-2">
+          <Badge
+            variant="outline"
+            className="bg-primary/10 text-primary hover:bg-primary/20"
           >
+            {formatAddress(address)}
+          </Badge>
+          <Button variant="outline" size="sm" onClick={() => disconnect()}>
             Disconnect
-          </button>
+          </Button>
         </div>
       ) : (
         // Disconnected state or initial SSR state
-        <button
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          className="flex items-center py-2 px-4 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
-        >
-          <Wallet className="h-4 w-4 mr-2" />
-          Connect Wallet
-        </button>
-      )}
-
-      {mounted && isMenuOpen && (
-        <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg z-10 border">
-          <div className="p-2">
-            <p className="text-sm font-medium mb-2">Select a wallet</p>
-            <div className="space-y-1">
-              {connectors.map((connector) => (
-                <button
-                  key={connector.id}
-                  onClick={() => handleConnectorSelect(connector.id)}
-                  disabled={!connector.ready}
-                  className="w-full text-left text-sm py-2 px-3 rounded hover:bg-gray-100 disabled:text-gray-400 disabled:hover:bg-white"
-                >
-                  {connector.name}
-                  {!connector.ready && " (unsupported)"}
-                </button>
-              ))}
-            </div>
-            {error && (
-              <p className="text-red-500 text-xs mt-2">
-                {error.message || "Failed to connect"}
-              </p>
-            )}
-          </div>
-        </div>
+        <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+          <DropdownMenuTrigger asChild>
+            <Button variant="default" size="sm">
+              <Wallet className="h-4 w-4 mr-2" />
+              Connect Wallet
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56">
+            <DropdownMenuLabel>Select a wallet</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {connectors.map((connector) => (
+              <DropdownMenuItem
+                key={connector.id}
+                onClick={() => handleConnectorSelect(connector.id)}
+                disabled={!connector.ready}
+                className="flex items-center justify-between"
+              >
+                {connector.name}
+                {Boolean(connector.ready) && (
+                  <Check className="h-4 w-4 text-green-500" />
+                )}
+                {!Boolean(connector.ready) && (
+                  <span className="text-xs text-muted-foreground">
+                    (unsupported)
+                  </span>
+                )}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
     </div>
   );
