@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { RootLayout } from "@/components/layout/RootLayout";
 import { PredictionMarketCard } from "@/components/ui/prediction-market-card";
 import Link from "next/link";
-import { useMarketContract } from "@/hooks/useMarketContract";
+import { useMarketContractSafe } from "@/hooks/useMarketContractSafe";
 import { Market, MarketStatus, Outcome } from "@/types/contracts";
 import gammaAPI from "@/services/gammaAPI";
 
@@ -12,7 +12,7 @@ export default function HomePage() {
   const [featuredMarkets, setFeaturedMarkets] = useState<any[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { getMarkets, getCategories } = useMarketContract();
+  const { getMarkets, getCategories } = useMarketContractSafe();
 
   useEffect(() => {
     const loadData = async () => {

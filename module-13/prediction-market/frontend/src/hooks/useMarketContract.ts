@@ -23,6 +23,7 @@ import {
  * Custom hook for interacting with Prediction Market contracts
  */
 export function useMarketContract() {
+  // Always call wagmi hooks at the top level to maintain consistent order
   const { address: userAddress, isConnected } = useAccount();
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();

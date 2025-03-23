@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { RootLayout } from "@/components/layout/RootLayout";
-import { useMarketContract } from "@/hooks/useMarketContract";
+import { useMarketContractSafe } from "@/hooks/useMarketContractSafe";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { InfoCircle, Clock, DollarSign, Calendar } from "lucide-react";
 
 export default function CreateMarketPage() {
   const router = useRouter();
-  const { createMarket, getCategories } = useMarketContract();
+  const { createMarket, getCategories } = useMarketContractSafe();
 
   const [formState, setFormState] = useState({
     title: "",

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { RootLayout } from "@/components/layout/RootLayout";
 import { PredictionMarketCard } from "@/components/ui/prediction-market-card";
-import { useMarketContract } from "@/hooks/useMarketContract";
+import { useMarketContractSafe } from "@/hooks/useMarketContractSafe";
 import { useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 import Link from "next/link";
@@ -22,7 +22,7 @@ export default function MarketsPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const { getMarkets, getMarketsByCategory, getCategories } =
-    useMarketContract();
+    useMarketContractSafe();
 
   useEffect(() => {
     const loadCategories = async () => {
