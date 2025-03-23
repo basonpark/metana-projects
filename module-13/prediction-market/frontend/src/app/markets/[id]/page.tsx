@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { RootLayout } from "@/components/layout/RootLayout";
-import { useMarketContract } from "@/hooks/useMarketContract";
+import { useMarketContractSafe } from "@/hooks/useMarketContractSafe";
 import { MarketStatus, Outcome } from "@/types/contracts";
 import {
   ArrowLeft,
@@ -29,8 +29,8 @@ export default function MarketDetailPage() {
   const {
     getMarket,
     placeBet,
-    isLoading: isContractLoading,
-  } = useMarketContract();
+    isLoading: contractLoading,
+  } = useMarketContractSafe();
 
   useEffect(() => {
     const loadMarketData = async () => {

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { RootLayout } from "@/components/layout/RootLayout";
 import Link from "next/link";
-import { useMarketContract } from "@/hooks/useMarketContract";
+import { useMarketContractSafe } from "@/hooks/useMarketContractSafe";
 import { useAccount } from "wagmi";
 import {
   ArrowUpRight,
@@ -44,7 +44,7 @@ export default function PortfolioPage() {
     getClaimableRewards,
     claimReward,
     isLoading: contractLoading,
-  } = useMarketContract();
+  } = useMarketContractSafe();
 
   // State management
   const [createdMarkets, setCreatedMarkets] = useState<any[]>([]);
