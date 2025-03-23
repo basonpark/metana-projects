@@ -437,21 +437,82 @@
   }
 }
 
-/* Aurora background animation */
+/* Aurora background animations */
 @keyframes aurora {
   0% {
-    background-position: 0% 0%, 0% 0%;
+    background-position: 0% 0%;
+    transform: rotate(0deg);
+  }
+  25% {
+    background-position: 50% 50%;
   }
   50% {
-    background-position: 100% 100%, 100% 100%;
+    background-position: 100% 100%;
+    transform: rotate(5deg);
+  }
+  75% {
+    background-position: 50% 50%;
   }
   100% {
-    background-position: 0% 0%, 0% 0%;
+    background-position: 0% 0%;
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes aurora-slow {
+  0% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+@keyframes aurora-fast {
+  0% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+@keyframes pulse-slow {
+  0% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0.3;
   }
 }
 
 .animate-aurora {
-  animation: aurora 10s ease infinite;
+  animation: aurora 20s ease-in-out infinite;
+}
+
+.animate-aurora-slow {
+  animation: aurora-slow 15s ease-in-out infinite;
+}
+
+.animate-aurora-fast {
+  animation: aurora-fast 10s ease-in-out infinite alternate;
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 8s ease-in-out infinite;
+}
+
+.aurora-mask {
+  mask-image: radial-gradient(ellipse at 50% 50%, black 20%, transparent 80%);
 }
 
 :root {
