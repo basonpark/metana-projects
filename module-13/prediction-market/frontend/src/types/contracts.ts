@@ -88,10 +88,33 @@ export interface MarketWithMetadata extends Market {
   yesPrice: number;          // Calculated price for Yes outcome (0-1)
   noPrice: number;           // Calculated price for No outcome (0-1)
   liquidity: string;         // Total liquidity (Yes + No amounts)
-  userBets?: Bet[];           // User's bets on this market
-  userPosition?: {            // User's position summary
-    yes: string; // Stored as string to handle big numbers
-    no: string; // Stored as string to handle big numbers
-    potential: string; // Stored as string to handle big numbers
+  volume?: number;           // Trading volume
+  totalLiquidity?: number;   // Total liquidity in number format for UI display
+  userBets?: Bet[];          // User's bets on this market
+  userPosition?: {           // User's position summary
+    yes: string;             // Stored as string to handle big numbers
+    no: string;              // Stored as string to handle big numbers
+    potential: string;       // Stored as string to handle big numbers
   }
+}
+
+/**
+ * User position in a market
+ */
+export interface UserPosition {
+  market: MarketWithMetadata;
+  betAmount: string;
+  prediction: Outcome;
+  potentialWinnings: string;
+  claimed: boolean;
+}
+
+/**
+ * Claimable reward for a user
+ */
+export interface ClaimableReward {
+  marketAddress: string;
+  marketQuestion: string;
+  amount: string;
+  outcome: Outcome;
 } 

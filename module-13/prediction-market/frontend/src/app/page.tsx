@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useMarketContractSafe } from "@/hooks/useMarketContractSafe";
 import { Market, MarketStatus, Outcome } from "@/types/contracts";
 import gammaAPI from "@/services/gammaAPI";
+import { ProphitHero } from "@/components/ProphitHero";
 
 export default function HomePage() {
   const [featuredMarkets, setFeaturedMarkets] = useState<any[]>([]);
@@ -17,13 +18,27 @@ export default function HomePage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Load market data
-        const markets = await getMarkets(0, 6);
+        // Define the market data structure for type safety
+        interface MarketData {
+          id: string | number;
+          title: string;
+          odds: {
+            yes: number;
+            no: number;
+          };
+          liquidity: string | number;
+          timeRemaining: string;
+          category: string;
+        }
 
-        // If we have markets from our contracts, use those
-        if (markets && markets.length > 0) {
-          setFeaturedMarkets(
-            markets.map((market) => ({
+        let marketsData: MarketData[] = [];
+        let categoriesData: string[] = [];
+
+        // Try to get markets from contract only if useMarketContractSafe is ready
+        try {
+          const markets = await getMarkets(0, 6);
+          if (markets && markets.length > 0) {
+            marketsData = markets.map((market) => ({
               id: market.address,
               title: market.question,
               odds: {
@@ -33,33 +48,60 @@ export default function HomePage() {
               liquidity: market.liquidity,
               timeRemaining: market.timeRemaining,
               category: market.category,
-            }))
+            }));
+          }
+        } catch (contractError) {
+          console.log(
+            "Contract not ready yet, using fallback data",
+            contractError
           );
-        } else {
+          // Will fall through to API fallback
+        }
+
+        // If we didn't get market data from the contract, use API fallback
+        if (marketsData.length === 0) {
           // Otherwise, fallback to Gamma API for demo data
           const gammaMarkets = await gammaAPI.getMarkets(6);
-          setFeaturedMarkets(
-            gammaMarkets.map((market) => ({
-              id: market.id,
-              title: market.question,
-              odds: {
-                yes: Math.round(market.outcomes[0]?.probability * 100) || 50,
-                no: Math.round(market.outcomes[1]?.probability * 100) || 50,
-              },
-              liquidity: market.liquidity,
-              timeRemaining: market.timeRemaining || "Ends soon",
-              category: market.category,
-            }))
+          marketsData = gammaMarkets.map((market) => ({
+            id: market.id,
+            title: market.question,
+            odds: {
+              yes: Math.round(market.outcomes[0]?.probability * 100) || 50,
+              no: Math.round(market.outcomes[1]?.probability * 100) || 50,
+            },
+            liquidity: market.liquidity,
+            timeRemaining: market.timeRemaining || "Ends soon",
+            category: market.category,
+          }));
+        }
+
+        setFeaturedMarkets(marketsData);
+
+        // Try to get categories from contract
+        try {
+          const cats = await getCategories();
+          if (cats && cats.length > 0) {
+            categoriesData = cats;
+          }
+        } catch (contractError) {
+          console.log(
+            "Could not fetch categories from contract",
+            contractError
           );
         }
 
-        // Load categories
-        const cats = await getCategories();
-        setCategories(
-          cats.length > 0
-            ? cats
-            : ["Crypto", "Politics", "Sports", "Finance", "Entertainment"]
-        );
+        // Use fallback if no categories from contract
+        if (categoriesData.length === 0) {
+          categoriesData = [
+            "Crypto",
+            "Politics",
+            "Sports",
+            "Finance",
+            "Entertainment",
+          ];
+        }
+
+        setCategories(categoriesData);
       } catch (error) {
         console.error("Error loading data:", error);
         // Fallback data
@@ -133,34 +175,12 @@ export default function HomePage() {
 
   return (
     <RootLayout>
-      <section className="relative py-12 md:py-16">
+      <section className="relative">
         {/* Hero section */}
-        <div className="text-center max-w-3xl mx-auto px-4 mb-16">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            Predict the Future, Earn Rewards
-          </h1>
-          <p className="text-xl text-muted-foreground mb-8">
-            Join the decentralized prediction marketplace where you can bet on
-            real-world events and earn rewards based on your forecasting skills.
-          </p>
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Link
-              href="/markets"
-              className="px-6 py-3 rounded-md bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
-            >
-              Explore Markets
-            </Link>
-            <Link
-              href="/markets/create"
-              className="px-6 py-3 rounded-md border border-border bg-background font-medium hover:bg-muted transition-colors"
-            >
-              Create Market
-            </Link>
-          </div>
-        </div>
+        <ProphitHero />
 
         {/* Featured Markets */}
-        <div className="container mx-auto px-4 mb-16">
+        <div className="container mx-auto px-4 mb-16 mt-16">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold">Featured Markets</h2>
             <Link href="/markets" className="text-primary hover:underline">
