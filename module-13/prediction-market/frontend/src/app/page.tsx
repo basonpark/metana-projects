@@ -175,13 +175,13 @@ export default function HomePage() {
 
   return (
     <RootLayout>
-      {/* Full-width hero section with no container constraints */}
+      {/* Hero section with full-width aurora background */}
       <ProphitHero />
 
-      {/* Content section with proper container */}
-      <div className="container mx-auto px-4 py-16">
+      {/* Content sections with containers */}
+      <div className="bg-background">
         {/* Featured Markets */}
-        <div className="mb-16">
+        <div className="container mx-auto px-4 py-16">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold">Featured Markets</h2>
             <Link href="/markets" className="text-primary hover:underline">
@@ -217,7 +217,7 @@ export default function HomePage() {
         </div>
 
         {/* Categories */}
-        <div className="mb-16">
+        <div className="container mx-auto px-4 pb-16">
           <h2 className="text-2xl font-bold mb-6">Browse by Category</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {categories.map((category) => (
@@ -242,7 +242,7 @@ export default function HomePage() {
         </div>
 
         {/* How It Works */}
-        <div>
+        <div className="container mx-auto px-4 pb-16">
           <h2 className="text-2xl font-bold mb-6 text-center">How It Works</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="text-center p-6">

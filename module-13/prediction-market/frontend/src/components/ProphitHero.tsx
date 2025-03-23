@@ -7,17 +7,17 @@ import { Button } from "@/components/ui/button";
 
 export function ProphitHero() {
   return (
-    // Full-width container with overflow hidden to contain the extended background
-    <div className="relative w-full min-h-[80vh] overflow-hidden">
-      {/* Aurora background positioned with negative margins to extend beyond the viewport */}
-      <div className="absolute -inset-12 z-0 w-[calc(100%+6rem)] h-[calc(100%+6rem)]">
+    // Main container with relative positioning
+    <div className="relative w-full min-h-[70vh]">
+      {/* Aurora background positioned only in the hero section, not fixed */}
+      <div className="absolute inset-0 z-0 w-full h-full">
         <AuroraBackground className="w-full h-full" showRadialGradient={false}>
           <div></div>
         </AuroraBackground>
       </div>
 
       {/* Hero content positioned on top of aurora background */}
-      <div className="relative z-10 min-h-[80vh] py-16 flex items-center justify-center">
+      <div className="relative z-10 min-h-[70vh] py-16 flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0.0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}

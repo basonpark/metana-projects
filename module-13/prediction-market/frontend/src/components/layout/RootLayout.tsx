@@ -29,7 +29,7 @@ export function RootLayout({ children }: RootLayoutProps) {
           </div>
         }
       />
-      <main className="flex-1 w-full">{children}</main>
+      <main className="flex-1">{children}</main>
       <footer className="border-t border-border py-6 bg-background">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
