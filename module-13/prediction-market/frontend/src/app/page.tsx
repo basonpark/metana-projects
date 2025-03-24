@@ -6,7 +6,7 @@ import { PredictionMarketCard } from "@/components/ui/prediction-market-card";
 import Link from "next/link";
 import { useMarketContractSafe } from "@/hooks/useMarketContractSafe";
 import { Market, MarketStatus, Outcome } from "@/types/contracts";
-import gammaAPI from "@/services/gammaAPI";
+import polymarketAPI from "@/services/polymarketAPI";
 import { ProphitHero } from "@/components/ProphitHero";
 
 export default function HomePage() {
@@ -60,9 +60,9 @@ export default function HomePage() {
 
         // If we didn't get market data from the contract, use API fallback
         if (marketsData.length === 0) {
-          // Otherwise, fallback to Gamma API for demo data
-          const gammaMarkets = await gammaAPI.getMarkets(6);
-          marketsData = gammaMarkets.map((market) => ({
+          // Use Polymarket API for real market data
+          const polymarketMarkets = await polymarketAPI.getMarkets(6);
+          marketsData = polymarketMarkets.map((market) => ({
             id: market.id,
             title: market.question,
             odds: {
@@ -92,13 +92,34 @@ export default function HomePage() {
 
         // Use fallback if no categories from contract
         if (categoriesData.length === 0) {
-          categoriesData = [
-            "Crypto",
-            "Politics",
-            "Sports",
-            "Finance",
-            "Entertainment",
-          ];
+          // Get categories from Polymarket API
+          try {
+            const polymarketCategories = await polymarketAPI.getCategories();
+            if (polymarketCategories.length > 0) {
+              categoriesData = polymarketCategories;
+            } else {
+              // Default categories as fallback
+              categoriesData = [
+                "Crypto",
+                "Finance",
+                "Politics",
+                "Sports",
+                "Technology",
+                "Entertainment",
+              ];
+            }
+          } catch (error) {
+            console.error("Error fetching Polymarket categories:", error);
+            // Default categories as fallback
+            categoriesData = [
+              "Crypto",
+              "Finance",
+              "Politics",
+              "Sports",
+              "Technology",
+              "Entertainment",
+            ];
+          }
         }
 
         setCategories(categoriesData);

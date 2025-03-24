@@ -14,7 +14,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
-import gammaAPI from "@/services/gammaAPI";
+import polymarketAPI from "@/services/polymarketAPI";
 
 export default function MarketDetailPage() {
   const params = useParams();
@@ -61,28 +61,82 @@ export default function MarketDetailPage() {
             userPosition: contractMarket.userPosition,
           });
         } else {
-          // Fallback to demo data if not found in contracts
-          // This would typically be from Gamma API in a real app
-          const demoMarket = {
-            id: marketId,
-            title: "Will Bitcoin exceed $100,000 by the end of 2024?",
-            description:
-              "This market resolves to YES if the price of Bitcoin (BTC) exceeds $100,000 USD at any point before December 31, 2024, 11:59 PM UTC according to the Coinbase Pro BTC/USD market.",
-            category: "Crypto",
-            status: MarketStatus.Open,
-            outcome: Outcome.NoOutcome,
-            endDate: "2024-12-31T23:59:59Z",
-            timeRemaining: "8 months remaining",
-            yesPrice: 0.65,
-            noPrice: 0.35,
-            liquidity: "135000",
-            creationTime: Date.now() - 30 * 24 * 60 * 60 * 1000, // 30 days ago
-            creator: "0x7a...3f9",
-            fee: 1.0, // 1% fee
-            userPosition: null,
-          };
+          // Try to get market from Polymarket API
+          try {
+            const polymarketMarket = await polymarketAPI.getMarket(marketId);
 
-          setMarket(demoMarket);
+            if (polymarketMarket) {
+              setMarket({
+                id: polymarketMarket.id,
+                title: polymarketMarket.question,
+                description: polymarketMarket.description,
+                category: polymarketMarket.category,
+                status:
+                  polymarketMarket.status === "open"
+                    ? MarketStatus.Open
+                    : polymarketMarket.status === "resolved"
+                    ? MarketStatus.Settled
+                    : MarketStatus.Locked,
+                outcome: polymarketMarket.outcome || Outcome.NoOutcome,
+                endDate: polymarketMarket.endDate,
+                timeRemaining: polymarketMarket.timeRemaining,
+                yesPrice: polymarketMarket.outcomes[0]?.probability || 0.5,
+                noPrice: polymarketMarket.outcomes[1]?.probability || 0.5,
+                liquidity: polymarketMarket.liquidity || 0,
+                creationTime: new Date(
+                  polymarketMarket.createdAt || Date.now()
+                ).getTime(),
+                creator: "Polymarket",
+                fee: 1.0, // 1% fee
+                userPosition: null,
+              });
+            } else {
+              // If not found in Polymarket API, use fallback demo data
+              const demoMarket = {
+                id: marketId,
+                title: "Will Bitcoin exceed $100,000 by the end of 2024?",
+                description:
+                  "This market resolves to YES if the price of Bitcoin (BTC) exceeds $100,000 USD at any point before December 31, 2024, 11:59 PM UTC according to the Coinbase Pro BTC/USD market.",
+                category: "Crypto",
+                status: MarketStatus.Open,
+                outcome: Outcome.NoOutcome,
+                endDate: "2024-12-31T23:59:59Z",
+                timeRemaining: "8 months remaining",
+                yesPrice: 0.65,
+                noPrice: 0.35,
+                liquidity: "135000",
+                creationTime: Date.now() - 30 * 24 * 60 * 60 * 1000, // 30 days ago
+                creator: "0x7a...3f9",
+                fee: 1.0, // 1% fee
+                userPosition: null,
+              };
+
+              setMarket(demoMarket);
+            }
+          } catch (apiError) {
+            console.error("Error fetching from Polymarket API:", apiError);
+            // Use fallback demo data if API fails
+            const demoMarket = {
+              id: marketId,
+              title: "Will Bitcoin exceed $100,000 by the end of 2024?",
+              description:
+                "This market resolves to YES if the price of Bitcoin (BTC) exceeds $100,000 USD at any point before December 31, 2024, 11:59 PM UTC according to the Coinbase Pro BTC/USD market.",
+              category: "Crypto",
+              status: MarketStatus.Open,
+              outcome: Outcome.NoOutcome,
+              endDate: "2024-12-31T23:59:59Z",
+              timeRemaining: "8 months remaining",
+              yesPrice: 0.65,
+              noPrice: 0.35,
+              liquidity: "135000",
+              creationTime: Date.now() - 30 * 24 * 60 * 60 * 1000, // 30 days ago
+              creator: "0x7a...3f9",
+              fee: 1.0, // 1% fee
+              userPosition: null,
+            };
+
+            setMarket(demoMarket);
+          }
         }
       } catch (error) {
         console.error("Error loading market:", error);

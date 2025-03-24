@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Clock, TrendingUp, DollarSign, Users } from "lucide-react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 export interface PredictionMarketCardProps {
   id: string | number;
@@ -15,6 +16,8 @@ export interface PredictionMarketCardProps {
   timeRemaining: string;
   category?: string;
   isFeatured?: boolean;
+  className?: string;
+  props?: any;
 }
 
 export function PredictionMarketCard({
@@ -25,6 +28,8 @@ export function PredictionMarketCard({
   timeRemaining,
   category,
   isFeatured = false,
+  className,
+  props,
 }: PredictionMarketCardProps) {
   // Format liquidity display
   const formattedLiquidity =
@@ -34,9 +39,11 @@ export function PredictionMarketCard({
 
   return (
     <div
-      className={`w-full rounded-lg border ${
-        isFeatured ? "border-primary" : "border-border"
-      } bg-background shadow-sm transition-all hover:shadow-md`}
+      className={cn(
+        "w-full max-w-xl bg-card text-card-foreground overflow-hidden rounded-lg border shadow-lg hover:shadow-xl transition-shadow duration-300",
+        className
+      )}
+      {...props}
     >
       <div className="p-5 space-y-4">
         <div className="space-y-2">
