@@ -29,39 +29,21 @@ export default function HomePage() {
           liquidity: string | number;
           timeRemaining: string;
           category: string;
+          isFeatured?: boolean; // Make it optional
         }
 
         let marketsData: MarketData[] = [];
         let categoriesData: string[] = [];
 
-        // Try to get markets from contract only if useMarketContractSafe is ready
-        try {
-          const markets = await getMarkets(0, 6);
-          if (markets && markets.length > 0) {
-            marketsData = markets.map((market) => ({
-              id: market.address,
-              title: market.question,
-              odds: {
-                yes: Math.round(market.yesPrice * 100),
-                no: Math.round(market.noPrice * 100),
-              },
-              liquidity: market.liquidity,
-              timeRemaining: market.timeRemaining,
-              category: market.category,
-            }));
-          }
-        } catch (contractError) {
-          console.log(
-            "Contract not ready yet, using fallback data",
-            contractError
-          );
-          // Will fall through to API fallback
-        }
+        // First try to get markets from Polymarket API
+        console.log("Fetching market data from Polymarket API");
+        const polymarketMarkets = await polymarketAPI.getMarkets(6);
 
-        // If we didn't get market data from the contract, use API fallback
-        if (marketsData.length === 0) {
-          // Use Polymarket API for real market data
-          const polymarketMarkets = await polymarketAPI.getMarkets(6);
+        if (polymarketMarkets && polymarketMarkets.length > 0) {
+          console.log(
+            "Successfully fetched data from Polymarket API",
+            polymarketMarkets
+          );
           marketsData = polymarketMarkets.map((market) => ({
             id: market.id,
             title: market.question,
@@ -73,53 +55,133 @@ export default function HomePage() {
             timeRemaining: market.timeRemaining || "Ends soon",
             category: market.category,
           }));
+        } else {
+          console.log("No data from Polymarket API, trying contract data");
+
+          // If Polymarket API fails, try to get markets from contract
+          try {
+            const markets = await getMarkets(0, 6);
+            if (markets && markets.length > 0) {
+              marketsData = markets.map((market) => ({
+                id: market.address,
+                title: market.question,
+                odds: {
+                  yes: Math.round(market.yesPrice * 100),
+                  no: Math.round(market.noPrice * 100),
+                },
+                liquidity: market.liquidity,
+                timeRemaining: market.timeRemaining,
+                category: market.category,
+              }));
+            }
+          } catch (contractError) {
+            console.log("Contract not ready yet", contractError);
+          }
+        }
+
+        // If we still don't have data, use fallback mock data
+        if (marketsData.length === 0) {
+          console.log(
+            "No data from API or contracts, using fallback mock data"
+          );
+          marketsData = [
+            {
+              id: 1,
+              title: "Will Bitcoin exceed $100,000 by end of 2024?",
+              odds: { yes: 65, no: 35 },
+              liquidity: 250000,
+              timeRemaining: "3 days remaining",
+              category: "Crypto",
+              isFeatured: true,
+            },
+            {
+              id: 2,
+              title: "Will the Federal Reserve cut interest rates in Q3?",
+              odds: { yes: 42, no: 58 },
+              liquidity: 180000,
+              timeRemaining: "5 days remaining",
+              category: "Finance",
+            },
+            {
+              id: 3,
+              title: "Will Apple release a new AR headset this year?",
+              odds: { yes: 78, no: 22 },
+              liquidity: 320000,
+              timeRemaining: "12 hours remaining",
+              category: "Technology",
+            },
+            {
+              id: 4,
+              title:
+                "Will the Democratic candidate win the 2024 US Presidential Election?",
+              odds: { yes: 52, no: 48 },
+              liquidity: 500000,
+              timeRemaining: "4 months remaining",
+              category: "Politics",
+            },
+            {
+              id: 5,
+              title: "Will Real Madrid win the Champions League?",
+              odds: { yes: 30, no: 70 },
+              liquidity: 150000,
+              timeRemaining: "2 months remaining",
+              category: "Sports",
+            },
+            {
+              id: 6,
+              title: "Will Ethereum price be above $5,000 by July 2024?",
+              odds: { yes: 45, no: 55 },
+              liquidity: 280000,
+              timeRemaining: "1 month remaining",
+              category: "Crypto",
+            },
+          ];
         }
 
         setFeaturedMarkets(marketsData);
 
-        // Try to get categories from contract
+        // Try to get categories from Polymarket API first
         try {
-          const cats = await getCategories();
-          if (cats && cats.length > 0) {
-            categoriesData = cats;
+          console.log("Fetching categories from Polymarket API");
+          const polymarketCategories = await polymarketAPI.getCategories();
+          if (polymarketCategories.length > 0) {
+            categoriesData = polymarketCategories;
           }
-        } catch (contractError) {
+        } catch (apiError) {
           console.log(
-            "Could not fetch categories from contract",
-            contractError
+            "Could not fetch categories from Polymarket API",
+            apiError
           );
         }
 
-        // Use fallback if no categories from contract
+        // If no categories from API, try contract
         if (categoriesData.length === 0) {
-          // Get categories from Polymarket API
           try {
-            const polymarketCategories = await polymarketAPI.getCategories();
-            if (polymarketCategories.length > 0) {
-              categoriesData = polymarketCategories;
-            } else {
-              // Default categories as fallback
-              categoriesData = [
-                "Crypto",
-                "Finance",
-                "Politics",
-                "Sports",
-                "Technology",
-                "Entertainment",
-              ];
+            console.log("Trying to fetch categories from contract");
+            const cats = await getCategories();
+            if (cats && cats.length > 0) {
+              categoriesData = cats;
             }
-          } catch (error) {
-            console.error("Error fetching Polymarket categories:", error);
-            // Default categories as fallback
-            categoriesData = [
-              "Crypto",
-              "Finance",
-              "Politics",
-              "Sports",
-              "Technology",
-              "Entertainment",
-            ];
+          } catch (contractError) {
+            console.log(
+              "Could not fetch categories from contract",
+              contractError
+            );
           }
+        }
+
+        // Use fallback if no categories from any source
+        if (categoriesData.length === 0) {
+          console.log("Using default categories as fallback");
+          // Default categories as fallback
+          categoriesData = [
+            "Crypto",
+            "Finance",
+            "Politics",
+            "Sports",
+            "Technology",
+            "Entertainment",
+          ];
         }
 
         setCategories(categoriesData);
