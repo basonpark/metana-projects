@@ -96,7 +96,7 @@ export function useMarketContractSafe() {
           timeRemaining: market.timeRemaining || "Unknown",
           yesPrice: market.outcomes[0]?.probability || 0.5,
           noPrice: market.outcomes[1]?.probability || 0.5,
-          userPosition: undefined
+          userPosition: null
         }));
       } catch (error) {
         console.error("Error fetching from Polymarket API:", error);

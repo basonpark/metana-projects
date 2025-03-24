@@ -14,8 +14,7 @@ class PolymarketAPI {
     // Polymarket's subgraph URL on The Graph
     // Note: This is an example URL - replace with the actual subgraph URL
     this.subgraphUrl = process.env.NEXT_PUBLIC_POLYMARKET_SUBGRAPH_URL || 
-      'https://api.thegraph.com/subgraphs/name/polymarket/polymarket-matic';
-      
+      'https://api.goldsky.com/api/public/project_cl6mb8i9h0003e201j6li0diw/subgraphs/positions-subgraph/0.0.7/gn'
     this.httpClient = axios.create({
       headers: {
         'Content-Type': 'application/json',
@@ -60,28 +59,40 @@ class PolymarketAPI {
         }
       `;
       
-      // Execute the GraphQL query
+      const variables = {
+        limit,
+        offset,
+        category
+      };
+      
+      console.log('GraphQL query variables:', variables);
+      
+      // Execute the GraphQL query with error handling
       const response = await this.httpClient.post(this.subgraphUrl, {
         query,
-        variables: {
-          limit,
-          offset,
-          category
-        }
+        variables
+      }).catch((error: any) => {
+        console.warn('Failed to fetch from Polymarket API:', error.message);
+        return { data: null };
       });
+      
+      console.log('Polymarket API response:', response.data);
       
       // Check if we have valid data
       if (response.data?.data?.markets) {
-        // Transform the data to match our application's format
-        return this.transformMarkets(response.data.data.markets);
+        const markets = this.transformMarkets(response.data.data.markets);
+        console.log('Transformed markets from API:', markets);
+        return markets;
       }
       
-      // If there are errors or no data, fall back to mock data
-      console.warn('Error or no data from Polymarket API:', response.data?.errors || 'No markets found');
-      return this.getMockMarkets(limit, category);
+      console.warn('No data from Polymarket API:', response.data?.errors || 'No markets found');
+      
+      // Return empty array instead of falling back to mock data
+      return [];
     } catch (error) {
       console.error('Error fetching from Polymarket subgraph:', error);
-      return this.getMockMarkets(limit, category);
+      // Return empty array instead of falling back to mock data
+      return [];
     }
   }
   
@@ -89,6 +100,7 @@ class PolymarketAPI {
    * Transform Polymarket markets data to our application format
    */
   private transformMarkets(marketsData: any[]): any[] {
+    console.log('Transforming markets data:', marketsData);
     return marketsData.map(market => {
       // Calculate time remaining
       const endDate = new Date(Number(market.endTimestamp) * 1000);
@@ -235,6 +247,8 @@ class PolymarketAPI {
    */
   async getMarket(marketId: string): Promise<any | null> {
     try {
+      console.log(`Fetching market ${marketId} from Polymarket API`);
+      
       // GraphQL query to fetch a single market
       const query = `
         query GetMarket($id: ID!) {
@@ -258,31 +272,31 @@ class PolymarketAPI {
         }
       `;
       
-      // Execute the GraphQL query
+      // Execute the GraphQL query with error handling
       const response = await this.httpClient.post(this.subgraphUrl, {
         query,
         variables: {
           id: marketId
         }
+      }).catch((error: any) => {
+        console.warn(`Failed to fetch market ${marketId} from Polymarket API:`, error.message);
+        return { data: null };
       });
+      
+      console.log(`Polymarket API response for market ${marketId}:`, response.data);
       
       // Check if we have valid data
       if (response.data?.data?.market) {
-        // Transform the data to match our application's format
-        return this.transformMarkets([response.data.data.market])[0];
+        const market = this.transformMarkets([response.data.data.market])[0];
+        console.log(`Transformed market ${marketId}:`, market);
+        return market;
       }
       
-      // If not found in API, check mock data
-      const mockMarket = this.getMockMarkets().find(market => market.id === marketId);
-      if (mockMarket) return mockMarket;
-      
-      // No market found
+      console.warn(`No data for market ${marketId} from Polymarket API:`, response.data?.errors || 'Market not found');
       return null;
     } catch (error) {
       console.error(`Error fetching market ${marketId}:`, error);
-      // Try to find in mock data
-      const mockMarket = this.getMockMarkets().find(market => market.id === marketId);
-      return mockMarket || null;
+      return null;
     }
   }
   
@@ -291,6 +305,8 @@ class PolymarketAPI {
    */
   async getCategories(): Promise<string[]> {
     try {
+      console.log('Fetching categories from Polymarket API');
+      
       // GraphQL query to fetch categories
       const query = `
         query GetCategories {
@@ -300,10 +316,15 @@ class PolymarketAPI {
         }
       `;
       
-      // Execute the GraphQL query
+      // Execute the GraphQL query with error handling
       const response = await this.httpClient.post(this.subgraphUrl, {
         query
+      }).catch((error: any) => {
+        console.warn('Failed to fetch categories from Polymarket API:', error.message);
+        return { data: null };
       });
+      
+      console.log('Polymarket API response for categories:', response.data);
       
       // Extract unique categories
       if (response.data?.data?.categories) {
@@ -315,10 +336,13 @@ class PolymarketAPI {
           }
         });
         
-        return Array.from(categoriesSet);
+        const categories = Array.from(categoriesSet);
+        console.log('Extracted categories:', categories);
+        return categories;
       }
       
       // Default categories if none found
+      console.warn('No categories found in API response, using defaults');
       return ['Crypto', 'Finance', 'Politics', 'Sports', 'Technology', 'Entertainment'];
     } catch (error) {
       console.error('Error fetching categories:', error);
