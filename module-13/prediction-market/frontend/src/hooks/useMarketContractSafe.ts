@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { ethers } from 'ethers';
 import { parseEther, formatEther } from 'viem';
+import polymarketAPI from '@/services/polymarketAPI';
 
 // Import contract ABIs
 import PredictionMarketABI from '@/abi/PredictionMarket.json';
@@ -64,6 +65,45 @@ export function useMarketContractSafe() {
     limit = 10
   ): Promise<MarketWithMetadata[]> => {
     if (!isMounted) return [];
+    
+    // If fake contracts mode is enabled, use Polymarket API instead
+    if (process.env.NEXT_PUBLIC_USE_FAKE_CONTRACTS === 'true') {
+      try {
+        // Fetch data from Polymarket API
+        const polymarketMarkets = await polymarketAPI.getMarkets(limit, offset);
+        
+        // Transform the Polymarket data to match our MarketWithMetadata format
+        return polymarketMarkets.map(market => ({
+          id: Number(market.id.replace('mock-', '')),
+          address: market.id,
+          question: market.question,
+          description: market.description,
+          creationTime: new Date(market.createdAt || Date.now()).getTime() / 1000,
+          expirationTime: new Date(market.endDate).getTime() / 1000,
+          settlementTime: new Date(market.endDate).getTime() / 1000 + 86400, // 1 day after end
+          oracle: "0x0",
+          dataFeedId: "0x0",
+          threshold: 0,
+          totalYesAmount: market.volume?.toString() || "0",
+          totalNoAmount: (market.volume * 0.4)?.toString() || "0",
+          status: market.status === "open" ? MarketStatus.Open : 
+                 market.status === "resolved" ? MarketStatus.Settled : MarketStatus.Locked,
+          outcome: Outcome.NoOutcome,
+          category: market.category || "Uncategorized",
+          creator: "Polymarket",
+          fee: 100, // 1% in basis points
+          liquidity: market.liquidity?.toString() || "0",
+          timeRemaining: market.timeRemaining || "Unknown",
+          yesPrice: market.outcomes[0]?.probability || 0.5,
+          noPrice: market.outcomes[1]?.probability || 0.5,
+          userPosition: undefined
+        }));
+      } catch (error) {
+        console.error("Error fetching from Polymarket API:", error);
+        return [];
+      }
+    }
+    
     if (!factoryAddress || !safePublicClient) {
       console.warn('Factory address or public client not available');
       return [];

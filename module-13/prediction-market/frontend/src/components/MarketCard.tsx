@@ -39,7 +39,7 @@ export function MarketCard({ market }: MarketCardProps) {
   };
 
   return (
-    <Card className="h-full flex flex-col">
+    <Card className="h-full flex flex-col shadow-lg hover:shadow-xl transition-shadow duration-300">
       <CardHeader className="pb-3">
         <div className="flex justify-between items-start gap-4">
           <Badge variant="outline" className="text-xs">
