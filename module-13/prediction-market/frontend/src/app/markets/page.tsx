@@ -7,7 +7,7 @@ import { useMarketContractSafe } from "@/hooks/useMarketContractSafe";
 import { useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 import Link from "next/link";
-import gammaAPI from "@/services/gammaAPI";
+import { fetchMarkets } from "@/services/marketAPIService";
 
 export default function MarketsPage() {
   const searchParams = useSearchParams();
@@ -86,34 +86,33 @@ export default function MarketsPage() {
             }))
           );
         } else {
-          // Fallback to sample data or Gamma API
-          let gammaMarkets = [];
-          try {
-            gammaMarkets = await gammaAPI.getMarkets(
-              20,
-              0,
-              selectedCategory?.toLowerCase()
-            );
-          } catch (err) {
-            console.error("Error fetching from Gamma API:", err);
-          }
+          // Fetch from our simplified API service
+          const apiMarkets = await fetchMarkets();
 
-          if (gammaMarkets && gammaMarkets.length > 0) {
+          // Filter by category if needed
+          const filtered = selectedCategory
+            ? apiMarkets.filter(
+                (m) =>
+                  m.category.toLowerCase() === selectedCategory.toLowerCase()
+              )
+            : apiMarkets;
+
+          if (filtered.length > 0) {
             setMarkets(
-              gammaMarkets.map((market) => ({
+              filtered.map((market) => ({
                 id: market.id,
                 title: market.question,
                 odds: {
-                  yes: Math.round(market.outcomes[0]?.probability * 100) || 50,
-                  no: Math.round(market.outcomes[1]?.probability * 100) || 50,
+                  yes: Math.round(market.yes_price * 100),
+                  no: Math.round(market.no_price * 100),
                 },
                 liquidity: market.liquidity,
-                timeRemaining: market.timeRemaining || "Ends soon",
+                timeRemaining: getTimeRemaining(market.resolution_time),
                 category: market.category,
               }))
             );
           } else {
-            // Use hardcoded fallback data
+            // Fallback to sample data
             setMarkets(getSampleMarkets(selectedCategory));
           }
         }
@@ -223,6 +222,20 @@ export default function MarketsPage() {
     return allMarkets.filter(
       (market) => market.category.toLowerCase() === category.toLowerCase()
     );
+  };
+
+  // Helper function to calculate time remaining
+  const getTimeRemaining = (resolutionTime: number): string => {
+    const now = Math.floor(Date.now() / 1000);
+    const timeRemaining = resolutionTime - now;
+
+    if (timeRemaining <= 0) return "Expired";
+
+    const days = Math.floor(timeRemaining / 86400);
+    const hours = Math.floor((timeRemaining % 86400) / 3600);
+
+    if (days > 0) return `${days}d ${hours}h remaining`;
+    return `${hours}h remaining`;
   };
 
   return (

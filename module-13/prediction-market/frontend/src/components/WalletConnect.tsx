@@ -1,96 +1,100 @@
 "use client";
 
-import { useAccount, useConnect, useDisconnect } from "wagmi";
-import { useState, useEffect } from "react";
-import { Wallet, Check, ChevronsUpDown } from "lucide-react";
+// import { ConnectButton } from '@rainbow-me/rainbowkit'; // <--- Comment out this import
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { type Connector } from "wagmi";
+import { Wallet } from "lucide-react"; // Import Wallet icon
 
 export function WalletConnect() {
-  const { address, isConnected } = useAccount();
-  const { connect, connectors } = useConnect();
-  const { disconnect } = useDisconnect();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  // Use useEffect to handle client-side-only operations
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Format address for display
-  const formatAddress = (addr: string) => {
-    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-  };
-
-  // Handle connector selection
-  const handleConnectorSelect = (connectorId: string) => {
-    const connector = connectors.find((c) => c.id === connectorId);
-    if (connector) {
-      connect({ connector });
-    }
-  };
-
-  // Render a consistent DOM structure regardless of connection state
-  // Only change the content once mounted on the client
+  // Return a simple placeholder button since the real functionality is commented out
   return (
-    <div className="relative">
-      {mounted && isConnected && address ? (
-        // Connected state - only rendered after mounting on client
-        <div className="flex items-center gap-2">
-          <Badge
-            variant="outline"
-            className="bg-primary/10 text-primary hover:bg-primary/20"
-          >
-            {formatAddress(address)}
-          </Badge>
-          <Button variant="outline" size="sm" onClick={() => disconnect()}>
-            Disconnect
-          </Button>
-        </div>
-      ) : (
-        // Disconnected state or initial SSR state
-        <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-          <DropdownMenuTrigger asChild>
-            <Button variant="default" size="sm">
-              <Wallet className="h-4 w-4 mr-2" />
-              Connect Wallet
-              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56">
-            <DropdownMenuLabel>Select a wallet</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {connectors.map((connector) => (
-              <DropdownMenuItem
-                key={connector.id}
-                onClick={() => handleConnectorSelect(connector.id)}
-                disabled={!connector.ready}
-                className="flex items-center justify-between"
-              >
-                {connector.name}
-                {Boolean(connector.ready) && (
-                  <Check className="h-4 w-4 text-green-500" />
-                )}
-                {!Boolean(connector.ready) && (
-                  <span className="text-xs text-muted-foreground">
-                    (unsupported)
-                  </span>
-                )}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-    </div>
+    <Button disabled>
+      {" "}
+      {/* Disable the button as it won't work */}
+      <Wallet className="h-4 w-4 mr-2" />
+      Connect Wallet
+    </Button>
   );
+
+  /* // <--- Start comment block for the original RainbowKit code
+  return (
+    <ConnectButton.Custom>
+      {({ account, chain, openAccountModal, openChainModal, openConnectModal, authenticationStatus, mounted }) => {
+        const ready = mounted && authenticationStatus !== 'loading';
+        const connected = ready && account && chain && (!authenticationStatus || authenticationStatus === 'authenticated');
+
+        return (
+          <div
+            {...(!ready && {
+              'aria-hidden': true,
+              'style': {
+                opacity: 0,
+                pointerEvents: 'none',
+                userSelect: 'none',
+              },
+            })}
+          >
+            {(() => {
+              if (!connected) {
+                return (
+                  <Button onClick={openConnectModal} type="button">
+                    Connect Wallet
+                  </Button>
+                );
+              }
+
+              if (chain.unsupported) {
+                return (
+                  <Button onClick={openChainModal} type="button" variant="destructive">
+                    Wrong network
+                  </Button>
+                );
+              }
+
+              return (
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <Button
+                    onClick={openChainModal}
+                    style={{ display: 'flex', alignItems: 'center' }}
+                    type="button"
+                    variant="outline"
+                  >
+                    {chain.hasIcon && (
+                      <div
+                        style={{
+                          background: chain.iconBackground,
+                          width: 16, // Smaller icon
+                          height: 16, // Smaller icon
+                          borderRadius: 999,
+                          overflow: 'hidden',
+                          marginRight: 6, // Spacing
+                        }}
+                      >
+                        {chain.iconUrl && (
+                          <img
+                            alt={chain.name ?? 'Chain icon'}
+                            src={chain.iconUrl}
+                            style={{ width: 16, height: 16 }} // Smaller icon
+                          />
+                        )}
+                      </div>
+                    )}
+                    {chain.name}
+                  </Button>
+                  <Button onClick={openAccountModal} type="button" variant="outline">
+                    {account.displayName}
+                    {
+                      account.displayBalance
+                        ? ` (${account.displayBalance})`
+                        : ''
+                    }
+                  </Button>
+                </div>
+              );
+            })()}
+          </div>
+        );
+      }}
+    </ConnectButton.Custom>
+  );
+  */ // <--- End comment block
 }
