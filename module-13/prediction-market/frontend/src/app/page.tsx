@@ -340,43 +340,6 @@ export default function HomePage() {
             ))}
           </div>
         </div>
-
-        {/* How It Works */}
-        <div className="container mx-auto px-4 pb-16">
-          <h2 className="text-2xl font-bold mb-6 text-center">How It Works</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center p-6">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-primary">1</span>
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Browse Markets</h3>
-              <p className="text-muted-foreground">
-                Explore a variety of prediction markets across different
-                categories and find opportunities.
-              </p>
-            </div>
-            <div className="text-center p-6">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-primary">2</span>
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Place Predictions</h3>
-              <p className="text-muted-foreground">
-                Buy YES or NO shares based on your prediction of the outcome and
-                your confidence level.
-              </p>
-            </div>
-            <div className="text-center p-6">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-primary">3</span>
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Earn Rewards</h3>
-              <p className="text-muted-foreground">
-                When the market resolves, collect your rewards for correct
-                predictions.
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
     </RootLayout>
   );
