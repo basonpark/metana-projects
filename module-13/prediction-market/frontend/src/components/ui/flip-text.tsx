@@ -23,25 +23,34 @@ function FlipText({
   className,
 }: FlipTextProps) {
   return (
-    <div className="flex justify-center">
+    <div className="flex justify-center space-x-1">
       <AnimatePresence mode="wait">
-        {word.split("").map((char, i) => (
-          <motion.span
-            key={i}
-            initial="hidden"
-            animate="visible"
-            exit="hidden"
-            variants={framerProps}
-            transition={{ duration, delay: i * delayMultiple }}
-            className={cn(
-              "origin-center drop-shadow-sm",
-              char === " " ? "mr-[0]" : "",
-              className
-            )}
-          >
-            {char === " " ? "\u00A0" : char}
-          </motion.span>
-        ))}
+        <motion.div
+          key={word}
+          initial="hidden"
+          animate="visible"
+          exit="hidden"
+          variants={{
+            hidden: { opacity: 0 },
+            visible: {
+              opacity: 1,
+              transition: { staggerChildren: delayMultiple },
+            },
+          }}
+          className="flex"
+        >
+          {word.split("").map((char, i) => (
+            <motion.span
+              key={i}
+              variants={framerProps}
+              transition={{ duration }}
+              className={cn("origin-center drop-shadow-sm", className)}
+              style={{ display: "inline-block" }}
+            >
+              {char === " " ? "\u00A0" : char}
+            </motion.span>
+          ))}
+        </motion.div>
       </AnimatePresence>
     </div>
   );
