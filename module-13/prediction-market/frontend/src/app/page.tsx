@@ -44,6 +44,7 @@ export default function HomePage() {
         timeRemaining: string;
         category: string;
         isFeatured?: boolean; // Make it optional
+        image?: string; // Added image field
       }
 
       // Fetch data from Polymarket API
@@ -67,15 +68,15 @@ export default function HomePage() {
           title: market.question,
           odds: {
             yes: Math.round((market.bestAsk ?? 0.5) * 100),
-            no: Math.round((market.bestBid ?? 0.5) * 100),
+            no: 100 - Math.round((market.bestAsk ?? 0.5) * 100),
           },
           liquidity: market.liquidityClob?.toString() ?? "0",
           timeRemaining: market.endDate
             ? formatTimeRemaining(market.endDate)
             : "N/A",
-          category: market.category || "General",
+          category: market.category?.trim() ? market.category : "Other",
+          image: market.image || undefined,
         }));
-
         setFeaturedMarkets(marketsData);
         setLastUpdated(new Date());
       } else {
@@ -205,6 +206,7 @@ export default function HomePage() {
         timeRemaining: "3 days remaining",
         category: "Crypto",
         isFeatured: true,
+        image: undefined,
       },
       {
         id: "mock-2", // Use string IDs for consistency
@@ -213,6 +215,7 @@ export default function HomePage() {
         liquidity: "180000", // Use string for consistency
         timeRemaining: "5 days remaining",
         category: "Finance",
+        image: undefined,
       },
       {
         id: "mock-3", // Use string IDs for consistency
@@ -221,6 +224,7 @@ export default function HomePage() {
         liquidity: "320000", // Use string for consistency
         timeRemaining: "12 hours remaining",
         category: "Technology",
+        image: undefined,
       },
       {
         id: "mock-4", // Use string IDs for consistency
@@ -230,6 +234,7 @@ export default function HomePage() {
         liquidity: "500000", // Use string for consistency
         timeRemaining: "4 months remaining",
         category: "Politics",
+        image: undefined,
       },
       {
         id: "mock-5", // Use string IDs for consistency
@@ -238,6 +243,7 @@ export default function HomePage() {
         liquidity: "150000", // Use string for consistency
         timeRemaining: "2 months remaining",
         category: "Sports",
+        image: undefined,
       },
       {
         id: "mock-6", // Use string IDs for consistency
@@ -246,6 +252,7 @@ export default function HomePage() {
         liquidity: "280000", // Use string for consistency
         timeRemaining: "1 month remaining",
         category: "Crypto",
+        image: undefined,
       },
     ]);
     // } catch (error) {
@@ -333,7 +340,8 @@ export default function HomePage() {
                   odds={market.odds}
                   liquidity={market.liquidity}
                   timeRemaining={market.timeRemaining}
-                  category={market.category}
+                  category={market.category || "Other"}
+                  image={market.image}
                   isFeatured={market.isFeatured}
                 />
               ))}

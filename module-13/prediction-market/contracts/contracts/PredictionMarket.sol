@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
 import "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
+import "./ChainlinkDataFeed.sol"; // Import ChainlinkDataFeed contract
+import "./ExternalAPIOracle.sol";
 
 /**
  * @title PredictionMarket
@@ -28,6 +30,9 @@ contract PredictionMarket is Ownable, AutomationCompatibleInterface {
         No         // The event did not occur
     }
 
+    // NEW: Enum to differentiate data sources
+    enum DataSourceType { ChainlinkPriceFeed, ExternalAPI }
+
     // Structure to represent a prediction market
     struct Market {
         uint256 id;
@@ -35,9 +40,12 @@ contract PredictionMarket is Ownable, AutomationCompatibleInterface {
         uint256 creationTime;    // When the market was created
         uint256 expirationTime;  // When the market expires and no more bets are accepted
         uint256 settlementTime;  // When the market will be settled
-        address oracle;          // Chainlink oracle or other data source
-        bytes32 dataFeedId;      // Identifier for the Chainlink data feed
-        uint256 threshold;       // Value to compare with the oracle result (e.g., price threshold)
+        // Address of the oracle contract (either ChainlinkDataFeed or ExternalAPIOracle)
+        address oracleContract;
+        // Identifier for the specific data feed or API endpoint within the oracle contract
+        bytes32 feedOrEndpointId;
+        // Threshold for Price Feed or expected outcome (1 for Yes, 0 for No) for API
+        uint256 resolutionCriteria;
         uint256 totalYesAmount;  // Total amount bet on "Yes" outcome
         uint256 totalNoAmount;   // Total amount bet on "No" outcome
         MarketStatus status;     // Current status of the market
@@ -45,6 +53,10 @@ contract PredictionMarket is Ownable, AutomationCompatibleInterface {
         string category;         // Category of the market (e.g., "Crypto", "Sports", "Politics")
         address creator;         // Creator of the market
         uint256 fee;             // Fee percentage (in basis points, e.g., 100 = 1%)
+        // NEW: Store the type of data source
+        DataSourceType dataSourceType;
+        // NEW: Store the Chainlink request ID if using ExternalAPIOracle for settlement
+        bytes32 settlementRequestId;
     }
 
     // Structure to represent a user's bet
@@ -65,18 +77,26 @@ contract PredictionMarket is Ownable, AutomationCompatibleInterface {
     // Platform fee (in basis points, e.g., 100 = 1%)
     uint256 public platformFee = 100; 
     
+    // NEW: References to the oracle contracts
+    ChainlinkDataFeed public chainlinkDataFeedOracle;
+    ExternalAPIOracle public externalApiOracle;
+
     // Events
-    event MarketCreated(uint256 indexed marketId, address indexed creator, string question);
+    event MarketCreated(uint256 indexed marketId, address indexed creator, string question, DataSourceType dataSourceType);
     event BetPlaced(uint256 indexed marketId, address indexed user, Outcome prediction, uint256 amount);
     event MarketLocked(uint256 indexed marketId);
     event MarketSettled(uint256 indexed marketId, Outcome outcome);
     event MarketCancelled(uint256 indexed marketId);
     event RewardClaimed(uint256 indexed marketId, address indexed user, uint256 amount);
     event PlatformFeeUpdated(uint256 newFee);
+    event SettlementDataRequested(uint256 indexed marketId, bytes32 requestId);
 
     // Constructor
-    constructor() Ownable(msg.sender) {
-        // Initialize the contract
+    constructor(address _chainlinkDataFeedOracle, address _externalApiOracle) Ownable(msg.sender) {
+        require(_chainlinkDataFeedOracle != address(0), "Invalid Chainlink Data Feed Oracle address");
+        require(_externalApiOracle != address(0), "Invalid External API Oracle address");
+        chainlinkDataFeedOracle = ChainlinkDataFeed(_chainlinkDataFeedOracle);
+        externalApiOracle = ExternalAPIOracle(_externalApiOracle);
     }
 
     /**
@@ -84,9 +104,9 @@ contract PredictionMarket is Ownable, AutomationCompatibleInterface {
      * @param question The question being predicted
      * @param expirationTime When the market expires and no more bets are accepted
      * @param settlementTime When the market will be settled
-     * @param oracle Chainlink oracle or other data source
-     * @param dataFeedId Identifier for the Chainlink data feed
-     * @param threshold Value to compare with the oracle result
+     * @param dataSourceType Type of data source
+     * @param feedOrEndpointId Identifier for the specific data feed or API endpoint
+     * @param resolutionCriteria Threshold for Price Feed, Expected value (0 or 1) for API
      * @param category Category of the market
      * @param fee Fee percentage (in basis points)
      */
@@ -94,9 +114,9 @@ contract PredictionMarket is Ownable, AutomationCompatibleInterface {
         string memory question,
         uint256 expirationTime,
         uint256 settlementTime,
-        address oracle,
-        bytes32 dataFeedId,
-        uint256 threshold,
+        DataSourceType dataSourceType,
+        bytes32 feedOrEndpointId,
+        uint256 resolutionCriteria,
         string memory category,
         uint256 fee
     ) external returns (uint256) {
@@ -106,6 +126,12 @@ contract PredictionMarket is Ownable, AutomationCompatibleInterface {
         require(bytes(question).length > 0, "Question cannot be empty");
         require(fee <= 1000, "Fee cannot exceed 10%"); // Max fee is 10%
 
+        address oracleContractAddress = (dataSourceType == DataSourceType.ChainlinkPriceFeed)
+            ? address(chainlinkDataFeedOracle)
+            : address(externalApiOracle);
+
+        require(oracleContractAddress != address(0), "Oracle contract not set");
+
         // Create new market
         uint256 marketId = nextMarketId++;
         markets[marketId] = Market({
@@ -114,19 +140,21 @@ contract PredictionMarket is Ownable, AutomationCompatibleInterface {
             creationTime: block.timestamp,
             expirationTime: expirationTime,
             settlementTime: settlementTime,
-            oracle: oracle,
-            dataFeedId: dataFeedId,
-            threshold: threshold,
+            oracleContract: oracleContractAddress,
+            feedOrEndpointId: feedOrEndpointId,
+            resolutionCriteria: resolutionCriteria,
             totalYesAmount: 0,
             totalNoAmount: 0,
             status: MarketStatus.Open,
             outcome: Outcome.NoOutcome,
             category: category,
             creator: msg.sender,
-            fee: fee
+            fee: fee,
+            dataSourceType: dataSourceType,
+            settlementRequestId: bytes32(0)
         });
 
-        emit MarketCreated(marketId, msg.sender, question);
+        emit MarketCreated(marketId, msg.sender, question, dataSourceType);
         return marketId;
     }
 
@@ -363,7 +391,7 @@ contract PredictionMarket is Ownable, AutomationCompatibleInterface {
         Market[] memory result = new Market[](count);
         
         for (uint i = 0; i < count; i++) {
-            result[i] = markets[offset + i + 1]; // +1 because market IDs start at 1
+            result[i] = markets[offset + i + 1]; // remember that ids start at 1
         }
         
         return result;
@@ -417,35 +445,74 @@ contract PredictionMarket is Ownable, AutomationCompatibleInterface {
                 emit MarketLocked(marketId);
             }
             else if (market.status == MarketStatus.Locked && block.timestamp >= market.settlementTime) {
-                // Here we'd normally query the Chainlink oracle for the result
-                // For simplicity, we'll determine the outcome based on the threshold and some external data
-                // In a real implementation, you'd use a Chainlink oracle to get the actual data
-                
-                // Mock oracle result - should be replaced with actual Chainlink oracle call
-                Outcome outcome = determineOutcomeFromOracle(marketId);
-                
-                market.outcome = outcome;
-                market.status = MarketStatus.Settled;
-                emit MarketSettled(marketId, outcome);
+                // --- Settlement Logic --- 
+                if (market.dataSourceType == DataSourceType.ChainlinkPriceFeed) {
+                    // Price Feed: Determine outcome directly
+                    Outcome outcome = determineOutcomeFromOracle(marketId);
+                    if (outcome != Outcome.NoOutcome) { // Handle potential oracle errors
+                         market.outcome = outcome;
+                         market.status = MarketStatus.Settled;
+                         emit MarketSettled(marketId, outcome);
+                    }
+                    // Consider adding logic here if the oracle fails (e.g., cancel market)
+
+                } else if (market.dataSourceType == DataSourceType.ExternalAPI) {
+                   // External API: Request data if not already requested
+                   if (market.settlementRequestId == bytes32(0)) {
+                       // *** IMPORTANT: Need API URL and JSON Path ***
+                       // These need to be stored or derivable for the market.
+                       // For now, we'll assume placeholder values. Replace with actual logic.
+                       string memory apiUrl = "https://gamma-api.example/market_result"; // Placeholder
+                       string memory jsonPath = "result"; // Placeholder (e.g., path to 0 or 1)
+                       uint256 payment = 0.1 ether; // Placeholder LINK payment (adjust based on network)
+
+                       try externalApiOracle.requestData(market.feedOrEndpointId, apiUrl, jsonPath, payment) returns (bytes32 requestId) {
+                           market.settlementRequestId = requestId;
+                           emit SettlementDataRequested(marketId, requestId);
+                       } catch {
+                           // Handle failure to request data (e.g., log, retry later, cancel market?)
+                       }
+                   } else {
+                       // Check if the external API oracle has received the response
+                       // Use getOutcomeFromResult, assuming API returns 0 or 1
+                       bool apiResult = externalApiOracle.getOutcomeFromResult(market.settlementRequestId, int256(market.resolutionCriteria));
+                       // Need to handle the case where the result is not yet available in ExternalAPIOracle
+                       // For simplicity, we assume it's available here. Add checks in production.
+                       Outcome outcome = apiResult ? Outcome.Yes : Outcome.No;
+
+                       market.outcome = outcome;
+                       market.status = MarketStatus.Settled;
+                       emit MarketSettled(marketId, outcome);
+                   }
+                }
             }
         }
     }
     
     /**
-     * @dev Mock function to simulate fetching data from Chainlink Oracle
-     * In a real implementation, this would query the actual Chainlink oracle
+     * @dev Function using real Chainlink Oracle to determine market outcomes
+     * This replaces the mock implementation
      */
     function determineOutcomeFromOracle(uint256 marketId) internal view returns (Outcome) {
         Market storage market = markets[marketId];
         
-        // In a real implementation, you'd use Chainlink to get this data
-        // For this example, we'll just use a simple mock based on market ID
-        uint256 mockOracleValue = uint256(keccak256(abi.encodePacked(block.timestamp, marketId))) % 1000;
-        
-        if (mockOracleValue > market.threshold) {
-            return Outcome.Yes;
+        if (market.dataSourceType == DataSourceType.ChainlinkPriceFeed) {
+            // === Chainlink Price Feed Logic ===
+            try chainlinkDataFeedOracle.isAboveThreshold(market.feedOrEndpointId, int256(market.resolutionCriteria)) returns (bool isAbove) {
+                return isAbove ? Outcome.Yes : Outcome.No;
+            } catch {
+                // Handle oracle error (e.g., feed down)
+                return Outcome.NoOutcome;
+            }
+        } else if (market.dataSourceType == DataSourceType.ExternalAPI) {
+             // === External API Logic ===
+             // This function is now only called directly for Price Feeds during settlement.
+             // For APIs, performUpkeep checks the result *after* the externalApiOracle receives it.
+             // We could add a view function here to check the *latest* stored API result if needed,
+             // but settlement relies on the check in performUpkeep based on the specific settlementRequestId.
+             revert("determineOutcomeFromOracle not applicable for ExternalAPI type during direct call");
         } else {
-            return Outcome.No;
+             return Outcome.NoOutcome; // Should not happen
         }
     }
     

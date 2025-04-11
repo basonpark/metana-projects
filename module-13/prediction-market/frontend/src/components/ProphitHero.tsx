@@ -93,7 +93,7 @@ export function ProphitHero() {
               duration: 1,
               ease: "easeOut",
             }}
-            className="text-xl text-muted-foreground max-w-3xl mt-10"
+            className="text-2xl text-muted-foreground max-w-3xl mt-10"
           >
             Join the next generation prediction market platform where your
             knowledge becomes your advantage.

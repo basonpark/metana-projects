@@ -217,7 +217,7 @@ export default function CreateMarketPage() {
                 name="title"
                 value={formState.title}
                 onChange={handleInputChange}
-                placeholder="e.g., Will Bitcoin exceed $100,000 by the end of 2024?"
+                placeholder="e.g., Will Bitcoin exceed $100,000 by the end of 2025?"
                 className={`w-full p-3 rounded-md border ${
                   formErrors.title ? "border-destructive" : "border-border"
                 } bg-background`}
