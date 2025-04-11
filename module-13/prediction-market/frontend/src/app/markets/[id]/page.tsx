@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { RootLayout } from "@/components/layout/RootLayout";
-import { useMarketContractSafe } from "@/hooks/useMarketContractSafe";
+import { useMarketContractSafe } from "../../../hooks/useMarketContractSafe";
 import { MarketStatus, Outcome } from "@/types/contracts";
 import {
   ArrowLeft,
@@ -14,7 +14,8 @@ import {
   ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
-import polymarketAPI from "@/services/polymarketAPI";
+import { fetchActivePolymarketMarkets } from "@/services/gamma";
+import { PolymarketMarket } from "@/types/polymarket";
 
 export default function MarketDetailPage() {
   const params = useParams();
@@ -61,37 +62,46 @@ export default function MarketDetailPage() {
             userPosition: contractMarket.userPosition,
           });
         } else {
-          // Try to get market from Polymarket API
+          // Try to get market from Polymarket API (via Gamma Service fetch-all)
           try {
-            const polymarketMarket = await polymarketAPI.getMarket(marketId);
+            console.log(
+              `Attempting to find market ${marketId} via Gamma service...`
+            );
+            const allMarkets = await fetchActivePolymarketMarkets();
+            const foundMarket = allMarkets?.find(
+              (m: PolymarketMarket) => m.id === marketId
+            );
 
-            if (polymarketMarket) {
+            if (foundMarket) {
+              console.log(`Found market ${marketId} via Gamma service.`);
+              // Map the found market data (using correct fields)
               setMarket({
-                id: polymarketMarket.id,
-                title: polymarketMarket.question,
-                description: polymarketMarket.description,
-                category: polymarketMarket.category,
-                status:
-                  polymarketMarket.status === "open"
-                    ? MarketStatus.Open
-                    : polymarketMarket.status === "resolved"
-                    ? MarketStatus.Settled
-                    : MarketStatus.Locked,
-                outcome: polymarketMarket.outcome || Outcome.NoOutcome,
-                endDate: polymarketMarket.endDate,
-                timeRemaining: polymarketMarket.timeRemaining,
-                yesPrice: polymarketMarket.outcomes[0]?.probability || 0.5,
-                noPrice: polymarketMarket.outcomes[1]?.probability || 0.5,
-                liquidity: polymarketMarket.liquidity || 0,
+                id: foundMarket.id,
+                title: foundMarket.question,
+                description:
+                  foundMarket.description || "No description available.",
+                category: foundMarket.category || "General",
+                status: MarketStatus.Open,
+                outcome: Outcome.NoOutcome,
+                endDate: foundMarket.endDate,
+                timeRemaining: foundMarket.endDate
+                  ? formatTimeRemaining(foundMarket.endDate)
+                  : "N/A",
+                yesPrice: foundMarket.bestAsk ?? 0.5,
+                noPrice: foundMarket.bestBid ?? 0.5,
+                liquidity: foundMarket.liquidityClob?.toString() ?? "0",
                 creationTime: new Date(
-                  polymarketMarket.createdAt || Date.now()
+                  foundMarket.created_at || Date.now()
                 ).getTime(),
-                creator: "Polymarket",
-                fee: 1.0, // 1% fee
+                creator: "Gamma API",
+                fee: 1.0,
                 userPosition: null,
               });
             } else {
-              // If not found in Polymarket API, use fallback demo data
+              console.log(
+                `Market ${marketId} not found via Gamma service. Using fallback.`
+              );
+              // If not found in API list, use fallback demo data
               const demoMarket = {
                 id: marketId,
                 title: "Will Bitcoin exceed $100,000 by the end of 2024?",
@@ -114,7 +124,10 @@ export default function MarketDetailPage() {
               setMarket(demoMarket);
             }
           } catch (apiError) {
-            console.error("Error fetching from Polymarket API:", apiError);
+            console.error(
+              "Error fetching or filtering markets via Gamma service:",
+              apiError
+            );
             // Use fallback demo data if API fails
             const demoMarket = {
               id: marketId,
@@ -147,6 +160,28 @@ export default function MarketDetailPage() {
 
     loadMarketData();
   }, [marketId, getMarket]);
+
+  // Helper function to calculate time remaining (copied from HomePage - move to utils?)
+  const formatTimeRemaining = (endDateString: string): string => {
+    const now = new Date();
+    const end = new Date(endDateString);
+    const diff = end.getTime() - now.getTime();
+
+    if (diff <= 0) {
+      return "Ended";
+    }
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (days > 1) return `${days} days remaining`;
+    if (days === 1) return `1 day remaining`;
+    if (hours > 1) return `${hours} hours remaining`;
+    if (hours === 1) return `1 hour remaining`;
+    if (minutes > 1) return `${minutes} minutes remaining`;
+    return `1 minute remaining`;
+  };
 
   const handlePlaceBet = async (outcome: Outcome) => {
     if (!market || isSubmitting || parseFloat(betAmount) <= 0) return;

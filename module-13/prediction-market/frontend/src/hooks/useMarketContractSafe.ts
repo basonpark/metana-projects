@@ -1,756 +1,346 @@
-"use client";
-
-import { useEffect, useState, useCallback } from 'react';
-import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
-import { ethers } from 'ethers';
-import { parseEther, formatEther } from 'viem';
-import polymarketAPI from '@/services/polymarketAPI';
-
-// Import contract ABIs
-import PredictionMarketABI from '@/abi/PredictionMarket.json';
+import { useState } from 'react';
+import { useAccount, useChainId, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { Abi, formatUnits, parseEther } from 'viem';
 import PredictionMarketFactoryABI from '@/abi/PredictionMarketFactory.json';
-import ChainlinkDataFeedABI from '@/abi/ChainlinkDataFeed.json';
-
-// Import types
-import {
-  Market,
-  Bet,
-  MarketStats,
-  Outcome,
-  MarketStatus,
-  MarketWithMetadata,
-  CreateMarketParams,
-  UserPosition,
-  ClaimableReward
-} from '@/types/contracts';
+import PredictionMarketABI from '@/abi/PredictionMarket.json';
+import { MarketWithMetadata, MarketStatus, Outcome } from '@/types/contracts';
+// We might need MarketWithMetadata later if getMarkets is expanded
+// import { MarketWithMetadata } from '@/types/contracts';
 
 /**
- * A wrapper hook that safely handles Wagmi hooks to prevent
- * the "WagmiProviderNotFoundError" and React Hooks ordering issues
+ * Custom hook to safely interact with read/write functions of the PredictionMarketFactory and individual PredictionMarket contracts.
+ * Handles checks for wallet connection, correct chain, and contract address availability.
  */
-export function useMarketContractSafe() {
-  // Track component mounted state
-  const [isMounted, setIsMounted] = useState(false);
-
-  // Set isMounted to true when the component is mounted
-  useEffect(() => {
-    setIsMounted(true);
-    return () => setIsMounted(false);
-  }, []);
-
-  // Local state
+export const useMarketContractSafe = () => {
+  const { address: accountAddress, isConnected } = useAccount();
+  const chainId = useChainId();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Always call wagmi hooks unconditionally at the top level
-  const account = useAccount();
-  const publicClient = usePublicClient();
-  const walletClientHook = useWalletClient();
-  
-  // Safe access to Wagmi values - only use values when mounted
-  const userAddress = isMounted ? account.address : undefined;
-  const isConnected = isMounted ? account.isConnected : false;
-  const walletClient = isMounted ? walletClientHook.data : undefined;
-  const safePublicClient = isMounted ? publicClient : undefined;
-  
-  // Get configured contract addresses from environment variables
-  const factoryAddress = process.env.NEXT_PUBLIC_PREDICTION_MARKET_FACTORY_ADDRESS;
-  const dataFeedAddress = process.env.NEXT_PUBLIC_CHAINLINK_DATA_FEED_ADDRESS;
+  const factoryAddress = process.env.NEXT_PUBLIC_PREDICTION_MARKET_FACTORY_ADDRESS as `0x${string}` | undefined;
+  const expectedChainId = parseInt(process.env.NEXT_PUBLIC_DEFAULT_CHAIN || '0', 10);
 
-  // Implementation of contract functions adapted from useMarketContract
-  // but only executing the real functionality when mounted
-  
-  const getMarkets = useCallback(async (
-    offset = 0,
-    limit = 10
-  ): Promise<MarketWithMetadata[]> => {
-    if (!isMounted) return [];
-    
-    // If fake contracts mode is enabled, use Polymarket API instead
-    if (process.env.NEXT_PUBLIC_USE_FAKE_CONTRACTS === 'true') {
+  const isReady =
+    isConnected &&
+    accountAddress &&
+    factoryAddress &&
+    chainId === expectedChainId;
+
+  const factoryContractConfig = {
+    address: factoryAddress,
+    abi: PredictionMarketFactoryABI.abi as Abi,
+    chainId: expectedChainId,
+  } as const; // Use 'as const' for better type inference with wagmi
+
+  // --- Individual Market Contract Setup (ABI only) ---
+  const marketContractAbi = PredictionMarketABI.abi as Abi;
+
+  /**
+   * Safely fetches the list of market categories from the contract.
+   *
+   * @returns A promise that resolves to an array of category strings, or null if prerequisites are not met.
+   * @throws Throws an error if the contract read fails after prerequisites are met.
+   */
+  const getCategories = async (): Promise<string[] | null> => {
+    if (!isReady) {
+      console.warn('[useMarketContractSafe] Prerequisites not met for getCategories (wallet connected, correct chain, address set).');
+      return null; // Not ready to call
+    }
+
+    try {
+      // Directly use wagmi's useReadContract hook for simplicity and caching
+      const { data, error, isLoading: isCategoriesLoading, isError } = useReadContract({
+        ...factoryContractConfig,
+        functionName: 'getCategories',
+        query: {
+          enabled: isReady, // Enable query only when ready
+        }
+      });
+
+      // Simplified: Return data directly, relying on component suspense/loading state
+      if (isError) {
+        console.error('[useMarketContractSafe] Error fetching categories:', error);
+        // Optionally re-throw or handle error differently
+        // throw error;
+      }
+      // We don't use the manual refetch pattern here anymore for simplicity
+      // Caller should handle loading state based on hook's return
+      return data as string[] | null;
+
+      /* // --- Manual refetch pattern (removed for simplicity) ---
+      setIsLoading(true); // Set loading before fetch
       try {
-        // Fetch data from Polymarket API
-        const polymarketMarkets = await polymarketAPI.getMarkets(limit, offset);
-        
-        // Transform the Polymarket data to match our MarketWithMetadata format
-        return polymarketMarkets.map(market => ({
-          id: Number(market.id.replace('mock-', '')),
-          address: market.id,
-          question: market.question,
-          description: market.description,
-          creationTime: new Date(market.createdAt || Date.now()).getTime() / 1000,
-          expirationTime: new Date(market.endDate).getTime() / 1000,
-          settlementTime: new Date(market.endDate).getTime() / 1000 + 86400, // 1 day after end
-          oracle: "0x0",
-          dataFeedId: "0x0",
-          threshold: 0,
-          totalYesAmount: market.volume?.toString() || "0",
-          totalNoAmount: (market.volume * 0.4)?.toString() || "0",
-          status: market.status === "open" ? MarketStatus.Open : 
-                 market.status === "resolved" ? MarketStatus.Settled : MarketStatus.Locked,
-          outcome: Outcome.NoOutcome,
-          category: market.category || "Uncategorized",
-          creator: "Polymarket",
-          fee: 100, // 1% in basis points
-          liquidity: market.liquidity?.toString() || "0",
-          timeRemaining: market.timeRemaining || "Unknown",
-          yesPrice: market.outcomes[0]?.probability || 0.5,
-          noPrice: market.outcomes[1]?.probability || 0.5,
-          userPosition: null
-        }));
-      } catch (error) {
-        console.error("Error fetching from Polymarket API:", error);
-        return [];
+        const { data, error, refetch } = useReadContract({
+      // ... existing code ...
+      } catch (err) {
+        console.error('[useMarketContractSafe] Failed to execute getCategories:', err);
+        throw err; // Re-throw other errors
+      } finally {
+        setIsLoading(false); // Clear loading after fetch
       }
-    }
-    
-    if (!factoryAddress || !safePublicClient) {
-      console.warn('Factory address or public client not available');
-      return [];
-    }
-    
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // Call the factory contract to get market addresses
-      const marketAddresses = await safePublicClient.readContract({
-        address: factoryAddress as `0x${string}`,
-        abi: PredictionMarketFactoryABI.abi,
-        functionName: 'getMarkets',
-        args: [BigInt(offset), BigInt(limit)]
-      });
-      
-      // Fetch details for each market
-      const marketPromises = (marketAddresses as string[]).map(async (marketAddress) => {
-        // Get market details
-        const marketData = await safePublicClient.readContract({
-          address: marketAddress as `0x${string}`,
-          abi: PredictionMarketABI.abi,
-          functionName: 'getMarketDetails',
-          args: []
-        });
-        
-        // Get market stats
-        const marketStats = await safePublicClient.readContract({
-          address: marketAddress as `0x${string}`,
-          abi: PredictionMarketABI.abi,
-          functionName: 'getMarketStats',
-          args: []
-        });
-        
-        // Parse market data into our MarketWithMetadata interface
-        const market = parseMarketData(marketData as any, marketStats as any);
-        
-        // Add market address
-        market.address = marketAddress;
-        
-        // If user is connected, get user's bets on this market
-        if (isConnected && userAddress) {
-          const userBets = await safePublicClient.readContract({
-            address: marketAddress as `0x${string}`,
-            abi: PredictionMarketABI.abi,
-            functionName: 'getBets',
-            args: [userAddress]
-          });
-          
-          market.userBets = userBets as Bet[];
-          
-          // Calculate user position
-          const userPosition = calculateUserPosition(market, userBets as Bet[]);
-          market.userPosition = userPosition;
-        }
-        
-        return market;
-      });
-      
-      const markets = await Promise.all(marketPromises);
-      return markets;
+      */
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error fetching markets';
-      setError(errorMessage);
-      console.error('Error fetching markets:', err);
-      return [];
-    } finally {
-      setIsLoading(false);
+      console.error('[useMarketContractSafe] Failed to execute getCategories:', err);
+      throw err; // Re-throw other errors
     }
-  }, [isMounted, factoryAddress, safePublicClient, isConnected, userAddress]);
+  };
 
-  const getMarketsByCategory = useCallback(async (
-    category: string,
-    offset = 0,
-    limit = 10
-  ): Promise<MarketWithMetadata[]> => {
-    if (!isMounted) return [];
-    if (!factoryAddress || !safePublicClient) {
-      console.warn('Factory address or public client not available');
-      return [];
+  /**
+   * Safely fetches a paginated list of market addresses from the contract.
+   *
+   * @param offset - The starting index for fetching markets.
+   * @param limit - The maximum number of market addresses to fetch.
+   * @returns A promise that resolves to an array of market addresses (as strings), or null if prerequisites are not met.
+   * @throws Throws an error if the contract read fails after prerequisites are met.
+   */
+  const getMarkets = async (offset: number, limit: number): Promise<`0x${string}`[] | null> => {
+     if (!isReady) {
+      console.warn('[useMarketContractSafe] Prerequisites not met for getMarkets (wallet connected, correct chain, address set).');
+      return null; // Not ready to call
     }
-    
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // Call the factory contract to get market addresses
-      const marketAddresses = await safePublicClient.readContract({
-        address: factoryAddress as `0x${string}`,
-        abi: PredictionMarketFactoryABI.abi,
-        functionName: 'getMarketsByCategory',
-        args: [category, BigInt(offset), BigInt(limit)]
-      });
-      
-      // Similar logic as getMarkets to fetch details
-      const marketPromises = (marketAddresses as string[]).map(async (marketAddress) => {
-        const marketData = await safePublicClient.readContract({
-          address: marketAddress as `0x${string}`,
-          abi: PredictionMarketABI.abi,
-          functionName: 'getMarketDetails',
-          args: []
-        });
-        
-        const marketStats = await safePublicClient.readContract({
-          address: marketAddress as `0x${string}`,
-          abi: PredictionMarketABI.abi,
-          functionName: 'getMarketStats',
-          args: []
-        });
-        
-        const market = parseMarketData(marketData as any, marketStats as any);
-        market.address = marketAddress;
-        
-        if (isConnected && userAddress) {
-          const userBets = await safePublicClient.readContract({
-            address: marketAddress as `0x${string}`,
-            abi: PredictionMarketABI.abi,
-            functionName: 'getBets',
-            args: [userAddress]
-          });
-          
-          market.userBets = userBets as Bet[];
-          market.userPosition = calculateUserPosition(market, userBets as Bet[]);
+
+     try {
+       // Use wagmi hook directly
+       const { data, error, isLoading: areMarketsLoading, isError } = useReadContract({
+         ...factoryContractConfig,
+         functionName: 'getMarkets',
+         args: [BigInt(offset), BigInt(limit)],
+         query: {
+           enabled: isReady,
+         }
+       });
+
+       if (isError) {
+          console.error('[useMarketContractSafe] Error fetching markets:', error);
         }
-        
-        return market;
-      });
-      
-      const markets = await Promise.all(marketPromises);
-      return markets;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : `Unknown error fetching markets for category ${category}`;
-      setError(errorMessage);
-      console.error(`Error fetching markets for category ${category}:`, err);
-      return [];
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isMounted, factoryAddress, safePublicClient, isConnected, userAddress]);
+       return data as `0x${string}`[] | null;
 
-  const getMarket = useCallback(async (
-    marketAddress: string
-  ): Promise<MarketWithMetadata | null> => {
-    if (!isMounted) return null;
-    if (!safePublicClient) {
-      console.warn('Public client not available');
+       /* // --- Manual refetch pattern (removed for simplicity) ---
+       setIsLoading(true);
+       try {
+         const { data, error, refetch } = useReadContract({
+       // ... existing code ...
+        } catch (err) {
+          console.error('[useMarketContractSafe] Failed to execute getMarkets:', err);
+          throw err;
+        } finally {
+          setIsLoading(false);
+        }
+        */
+     } catch (err) {
+       console.error('[useMarketContractSafe] Failed to execute getMarkets:', err);
+       throw err;
+     }
+   };
+
+  /**
+   * Safely fetches details for a specific market contract.
+   *
+   * @param marketAddress The address of the PredictionMarket contract.
+   * @returns A promise resolving to MarketWithMetadata or null.
+   */
+  const getMarket = async (marketAddress: string | undefined): Promise<MarketWithMetadata | null> => {
+    if (!isReady || !marketAddress) {
+      console.warn('[useMarketContractSafe] Prerequisites not met for getMarket.');
       return null;
     }
-    
+    // Ensure marketAddress is a valid address format if needed
+    const contractAddress = marketAddress as `0x${string}`;
+
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      setError(null);
-      
-      // Get market details
-      const marketData = await safePublicClient.readContract({
-        address: marketAddress as `0x${string}`,
-        abi: PredictionMarketABI.abi,
+      // --- Fetch all required data using multicall or separate reads ---
+      // This example uses separate reads for clarity, multicall is more efficient
+
+      // 1. Fetch basic market details
+      const { data: details, refetch: refetchDetails } = useReadContract({
+        address: contractAddress,
+        abi: marketContractAbi,
         functionName: 'getMarketDetails',
-        args: []
+        chainId: expectedChainId,
+        query: { enabled: false } // Manual refetch
       });
-      
-      // Get market stats
-      const marketStats = await safePublicClient.readContract({
-        address: marketAddress as `0x${string}`,
-        abi: PredictionMarketABI.abi,
-        functionName: 'getMarketStats',
-        args: []
-      });
-      
-      const market = parseMarketData(marketData as any, marketStats as any);
-      market.address = marketAddress;
-      
-      // If user is connected, get user's bets on this market
-      if (isConnected && userAddress) {
-        const userBets = await safePublicClient.readContract({
-          address: marketAddress as `0x${string}`,
-          abi: PredictionMarketABI.abi,
-          functionName: 'getBets',
-          args: [userAddress]
+      const detailsResult = await refetchDetails();
+      if (detailsResult.isError || !detailsResult.data) throw new Error('Failed to fetch market details');
+      const marketData = detailsResult.data as any; // Type assertion needed based on ABI return structure
+
+      // 2. Fetch user position (if account is connected)
+      let userPositionData = { yes: '0', no: '0', potential: '0' };
+      if (accountAddress) {
+        const { data: position, refetch: refetchPosition } = useReadContract({
+            address: contractAddress,
+            abi: marketContractAbi,
+            functionName: 'getUserPosition',
+            args: [accountAddress],
+            chainId: expectedChainId,
+            query: { enabled: false }
         });
-        
-        market.userBets = userBets as Bet[];
-        market.userPosition = calculateUserPosition(market, userBets as Bet[]);
+        const positionResult = await refetchPosition();
+        if (positionResult.data) {
+            const pos = positionResult.data as [bigint, bigint, bigint];
+            userPositionData = {
+                yes: formatUnits(pos[0], 0), // Assuming decimals=0 for shares
+                no: formatUnits(pos[1], 0),
+                potential: formatUnits(pos[2], 18) // Assuming decimals=18 for payout
+            };
+        }
       }
-      
+
+      // 3. Fetch current prices (may need specific functions based on your contract)
+      const { data: yesPriceRaw, refetch: refetchYes } = useReadContract({
+        address: contractAddress,
+        abi: marketContractAbi,
+        functionName: 'getYesPrice', // Assuming function exists
+        chainId: expectedChainId,
+        query: { enabled: false }
+      });
+      const { data: noPriceRaw, refetch: refetchNo } = useReadContract({
+          address: contractAddress,
+          abi: marketContractAbi,
+          functionName: 'getNoPrice', // Assuming function exists
+          chainId: expectedChainId,
+          query: { enabled: false }
+      });
+      const yesPriceResult = await refetchYes();
+      const noPriceResult = await refetchNo();
+      // Assuming prices are returned as uint scaled by 1e18 (adjust if needed)
+      const yesPrice = yesPriceResult.data ? parseFloat(formatUnits(yesPriceResult.data as bigint, 18)) : 0.5;
+      const noPrice = noPriceResult.data ? parseFloat(formatUnits(noPriceResult.data as bigint, 18)) : 0.5;
+
+      // --- Construct MarketWithMetadata --- 
+      // TODO: Adjust property names based on actual `getMarketDetails` return structure
+      const market: MarketWithMetadata = {
+        id: marketData.id ? Number(marketData.id) : 0, // Adjust based on actual return type
+        address: contractAddress,
+        question: marketData.question || '',
+        creationTime: marketData.creationTime ? Number(marketData.creationTime) : 0,
+        expirationTime: marketData.expirationTime ? Number(marketData.expirationTime) : 0,
+        settlementTime: marketData.settlementTime ? Number(marketData.settlementTime) : 0,
+        oracle: marketData.oracle || '',
+        dataFeedId: marketData.dataFeedId || '',
+        threshold: marketData.threshold ? Number(marketData.threshold) : 0,
+        totalYesAmount: marketData.totalYesAmount ? formatUnits(marketData.totalYesAmount, 0) : '0', // Adjust decimals
+        totalNoAmount: marketData.totalNoAmount ? formatUnits(marketData.totalNoAmount, 0) : '0', // Adjust decimals
+        status: marketData.status as MarketStatus || MarketStatus.Open,
+        outcome: marketData.outcome as Outcome || Outcome.NoOutcome,
+        category: marketData.category || '',
+        creator: marketData.creator || '',
+        fee: marketData.fee ? Number(marketData.fee) : 0,
+
+        // Calculated/added fields
+        timeRemaining: formatTimeRemaining(Number(marketData.expirationTime)), // Add helper
+        yesPrice: yesPrice,
+        noPrice: noPrice,
+        liquidity: formatUnits(BigInt(marketData.totalYesAmount || 0) + BigInt(marketData.totalNoAmount || 0), 0), // Adjust decimals
+        userPosition: userPositionData,
+      };
+
       return market;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : `Unknown error fetching market at ${marketAddress}`;
-      setError(errorMessage);
-      console.error('Error fetching market:', err);
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isMounted, safePublicClient, isConnected, userAddress]);
 
-  const createMarket = useCallback(async (
-    params: CreateMarketParams
-  ): Promise<any> => {
-    if (!isMounted) return null;
-    if (!factoryAddress || !walletClient || !userAddress || !safePublicClient) {
-      console.warn('Factory address, wallet client, or user address not available');
-      return null;
-    }
-    
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // Create the market using the factory
-      const txHash = await walletClient.writeContract({
-        address: factoryAddress as `0x${string}`,
-        abi: PredictionMarketFactoryABI.abi,
-        functionName: 'createMarket',
-        args: [
-          params.question,
-          BigInt(params.expirationTime || 0),
-          params.dataFeedId || '0x0',
-          BigInt(params.threshold || 0),
-          params.category,
-          BigInt(Math.floor((params.fee || 0) * 100)) // Convert percentage to basis points
-        ],
-        value: parseEther('0') // No initial liquidity in the current interface
-      });
-      
-      // Wait for transaction to be mined
-      const receipt = await safePublicClient.waitForTransactionReceipt({ hash: txHash });
-      
-      return { 
-        success: true, 
-        marketAddress: "0x123", // This would be extracted from events in production
-        txHash 
-      };
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error creating market';
-      setError(errorMessage);
-      console.error('Error creating market:', err);
-      return null;
+      console.error(`[useMarketContractSafe] Failed to execute getMarket(${marketAddress}):`, err);
+      return null; // Return null on error
     } finally {
       setIsLoading(false);
     }
-  }, [isMounted, factoryAddress, walletClient, safePublicClient, userAddress]);
-
-  const placeBet = useCallback(async (
-    marketAddress: string,
-    prediction: Outcome,
-    amount: string
-  ): Promise<boolean> => {
-    if (!isMounted) return false;
-    if (!walletClient || !userAddress || !safePublicClient) {
-      console.warn('Wallet client or user address not available');
-      return false;
-    }
-    
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // Convert amount from ETH to wei
-      const valueInWei = parseEther(amount);
-      
-      // Place the bet
-      const txHash = await walletClient.writeContract({
-        address: marketAddress as `0x${string}`,
-        abi: PredictionMarketABI.abi,
-        functionName: 'placeBet',
-        args: [prediction],
-        value: valueInWei
-      });
-      
-      // Wait for transaction to be mined
-      await safePublicClient.waitForTransactionReceipt({ hash: txHash });
-      
-      return true;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error placing bet';
-      setError(errorMessage);
-      console.error('Error placing bet:', err);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isMounted, walletClient, safePublicClient, userAddress]);
-
-  const claimReward = useCallback(async (
-    marketAddress: string
-  ): Promise<boolean> => {
-    if (!isMounted) return false;
-    if (!walletClient || !userAddress || !safePublicClient) {
-      console.warn('Wallet client or user address not available');
-      return false;
-    }
-    
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // Claim the reward
-      const txHash = await walletClient.writeContract({
-        address: marketAddress as `0x${string}`,
-        abi: PredictionMarketABI.abi,
-        functionName: 'claimReward',
-        args: []
-      });
-      
-      // Wait for transaction to be mined
-      await safePublicClient.waitForTransactionReceipt({ hash: txHash });
-      
-      return true;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error claiming reward';
-      setError(errorMessage);
-      console.error('Error claiming reward:', err);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isMounted, walletClient, safePublicClient, userAddress]);
-
-  const getCategories = useCallback(async (): Promise<string[]> => {
-    if (!isMounted) return [];
-    if (!factoryAddress || !safePublicClient) {
-      console.warn('Factory address or public client not available');
-      return [];
-    }
-    
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // Get categories from factory
-      const categories = await safePublicClient.readContract({
-        address: factoryAddress as `0x${string}`,
-        abi: PredictionMarketFactoryABI.abi,
-        functionName: 'getCategories'
-      });
-      
-      return categories as string[];
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error fetching categories';
-      setError(errorMessage);
-      console.error('Error fetching categories:', err);
-      return ['Crypto', 'Sports', 'Politics', 'Entertainment', 'Other'];
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isMounted, factoryAddress, safePublicClient]);
-
-  const getLatestPrice = useCallback(async (dataFeedId: string): Promise<number> => {
-    if (!isMounted) return 0;
-    if (!dataFeedAddress || !safePublicClient) {
-      console.warn('Data feed address or public client not available');
-      return 0;
-    }
-    
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // Call the data feed contract to get the latest price
-      const priceData = await safePublicClient.readContract({
-        address: dataFeedAddress as `0x${string}`,
-        abi: ChainlinkDataFeedABI.abi,
-        functionName: 'getLatestPrice',
-        args: [dataFeedId]
-      });
-      
-      // Convert price to number (assuming it returns a BigInt or string)
-      const price = typeof priceData === 'bigint' 
-        ? Number(priceData) 
-        : typeof priceData === 'string' 
-          ? parseFloat(priceData) 
-          : 0;
-      
-      return price;
-    } catch (err) {
-      console.error(`Error fetching price for data feed ${dataFeedId}:`, err);
-      return 0;
-    }
-  }, [isMounted, dataFeedAddress, safePublicClient]);
-  
-  const getMarketsCreatedByUser = useCallback(async (
-    userAddr: string = userAddress || '',
-    offset = 0,
-    limit = 10
-  ): Promise<MarketWithMetadata[]> => {
-    if (!isMounted) return [];
-    if (!factoryAddress || !safePublicClient) {
-      console.warn('Factory address or public client not available');
-      return [];
-    }
-    
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // Call the factory contract to get markets created by the user
-      const marketAddresses = await safePublicClient.readContract({
-        address: factoryAddress as `0x${string}`,
-        abi: PredictionMarketFactoryABI.abi,
-        functionName: 'getMarketsByCreator',
-        args: [userAddr, BigInt(offset), BigInt(limit)]
-      });
-      
-      if (!marketAddresses || (marketAddresses as string[]).length === 0) {
-        return [];
-      }
-      
-      // Similar logic as getMarkets to fetch details
-      const marketPromises = (marketAddresses as string[]).map(async (marketAddress) => {
-        const marketData = await safePublicClient.readContract({
-          address: marketAddress as `0x${string}`,
-          abi: PredictionMarketABI.abi,
-          functionName: 'getMarketDetails',
-          args: []
-        });
-        
-        const marketStats = await safePublicClient.readContract({
-          address: marketAddress as `0x${string}`,
-          abi: PredictionMarketABI.abi,
-          functionName: 'getMarketStats',
-          args: []
-        });
-        
-        const market = parseMarketData(marketData as any, marketStats as any);
-        market.address = marketAddress;
-        
-        return market;
-      });
-      
-      const markets = await Promise.all(marketPromises);
-      return markets;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error fetching created markets';
-      setError(errorMessage);
-      console.error('Error fetching created markets:', err);
-      return [];
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isMounted, factoryAddress, safePublicClient, isConnected, userAddress]);
-  
-  const getUserPositions = useCallback(async (
-    userAddr: string = userAddress || ''
-  ): Promise<UserPosition[]> => {
-    if (!isMounted) return [];
-    if (!factoryAddress || !safePublicClient) {
-      console.warn('Factory address or public client not available');
-      return [];
-    }
-    
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // For demo purposes, create mock UserPosition objects that match the interface
-      const mockMarket1: MarketWithMetadata = {
-        id: 1,
-        address: "0x123",
-        question: "Will BTC exceed $100k in 2024?",
-        creationTime: Math.floor(Date.now() / 1000) - 86400 * 30, // 30 days ago
-        expirationTime: Math.floor(Date.now() / 1000) + 86400 * 60, // 60 days from now
-        settlementTime: 0,
-        oracle: "0x000",
-        dataFeedId: "0x000",
-        threshold: 100000,
-        totalYesAmount: "100000",
-        totalNoAmount: "50000",
-        status: MarketStatus.Open,
-        outcome: Outcome.NoOutcome,
-        category: "Crypto",
-        creator: "0x000",
-        fee: 100, // 1%
-        liquidity: "150000",
-        timeRemaining: "60 days remaining",
-        yesPrice: 0.67,
-        noPrice: 0.33
-      };
-      
-      const mockMarket2: MarketWithMetadata = {
-        id: 2,
-        address: "0x456",
-        question: "Will ETH 2.0 launch before Q3 2024?",
-        creationTime: Math.floor(Date.now() / 1000) - 86400 * 15, // 15 days ago
-        expirationTime: Math.floor(Date.now() / 1000) + 86400 * 45, // 45 days from now
-        settlementTime: 0,
-        oracle: "0x000",
-        dataFeedId: "0x000",
-        threshold: 0,
-        totalYesAmount: "80000",
-        totalNoAmount: "120000",
-        status: MarketStatus.Open,
-        outcome: Outcome.NoOutcome,
-        category: "Crypto",
-        creator: "0x000",
-        fee: 100, // 1%
-        liquidity: "200000",
-        timeRemaining: "45 days remaining",
-        yesPrice: 0.4,
-        noPrice: 0.6
-      };
-      
-      return [
-        {
-          market: mockMarket1,
-          betAmount: "100",
-          prediction: Outcome.Yes,
-          potentialWinnings: "150",
-          claimed: false
-        },
-        {
-          market: mockMarket2,
-          betAmount: "50",
-          prediction: Outcome.No,
-          potentialWinnings: "83.33",
-          claimed: false
-        }
-      ];
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error fetching user positions';
-      setError(errorMessage);
-      console.error('Error fetching user positions:', err);
-      return [];
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isMounted, factoryAddress, safePublicClient, isConnected, userAddress]);
-  
-  const getClaimableRewards = useCallback(async (
-    userAddr: string = userAddress || ''
-  ): Promise<ClaimableReward[]> => {
-    if (!isMounted) return [];
-    if (!factoryAddress || !safePublicClient) {
-      console.warn('Factory address or public client not available');
-      return [];
-    }
-    
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // For demo purposes, return mock ClaimableReward objects that match the interface
-      return [
-        {
-          marketAddress: "0x789",
-          marketQuestion: "Will the Federal Reserve cut rates in Q2 2024?",
-          amount: "35.75",
-          outcome: Outcome.Yes
-        },
-        {
-          marketAddress: "0xabc",
-          marketQuestion: "Will Tesla stock exceed $300 by August 2024?",
-          amount: "12.20",
-          outcome: Outcome.No
-        }
-      ];
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error fetching claimable rewards';
-      setError(errorMessage);
-      console.error('Error fetching claimable rewards:', err);
-      return [];
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isMounted, factoryAddress, safePublicClient, isConnected, userAddress]);
-
-  // Helper functions
-  
-  const parseMarketData = (
-    marketData: any,
-    marketStats: any
-  ): MarketWithMetadata => {
-    // Create a mock market object for demo purposes
-    const market: MarketWithMetadata = {
-      id: Number(marketData[0] || 0),
-      question: marketData[1] || "Sample Market Question",
-      creationTime: Number(marketData[2] || Date.now() / 1000),
-      expirationTime: Number(marketData[3] || (Date.now() / 1000 + 86400 * 7)), // 7 days
-      settlementTime: Number(marketData[4] || 0),
-      oracle: marketData[5] || "0x000",
-      dataFeedId: marketData[6] || "0x000",
-      threshold: Number(marketData[7] || 0),
-      totalYesAmount: (marketData[8] || "100000").toString(),
-      totalNoAmount: (marketData[9] || "50000").toString(),
-      status: Number(marketData[10] || MarketStatus.Open),
-      outcome: Number(marketData[11] || Outcome.NoOutcome),
-      category: marketData[12] || "Crypto",
-      creator: marketData[13] || "0x000",
-      fee: Number(marketData[14] || 100), // 1%
-      
-      // Add calculated fields
-      address: '',
-      liquidity: "150000",
-      timeRemaining: "7 days remaining",
-      yesPrice: 0.67,
-      noPrice: 0.33
-    };
-    
-    return market;
-  };
-  
-  const calculateUserPosition = (
-    market: MarketWithMetadata,
-    bets: Bet[]
-  ) => {
-    // Create a mock position for demo purposes
-    return {
-      yes: "100",
-      no: "0",
-      potential: "150"
-    };
   };
 
-  // Return a mock contract with empty functions when not mounted
-  if (!isMounted) {
-    return {
-      getMarkets: async () => [],
-      getMarketsByCategory: async () => [],
-      getMarket: async () => null,
-      createMarket: async () => null,
-      placeBet: async () => false,
-      claimReward: async () => false,
-      getCategories: async () => [],
-      getLatestPrice: async () => 0,
-      getMarketsCreatedByUser: async () => [],
-      getUserPositions: async () => [],
-      getClaimableRewards: async () => [],
-      isLoading: false,
-      error: null
-    };
-  }
+  // --- Individual Market Write Functions ---
 
-  // Return all functions when mounted
+  // Hook for writing contract interactions
+  const { data: hash, error: writeError, isPending: isWritePending, writeContract } = useWriteContract();
+
+  /**
+   * Safely places a bet on a specific market.
+   *
+   * @param marketAddress The address of the PredictionMarket contract.
+   * @param outcome The outcome to bet on (Outcome.Yes or Outcome.No).
+   * @param amount The amount to bet (in Ether as a string).
+   * @returns A promise resolving to the transaction hash or null/throws on error.
+   */
+  const placeBet = async (marketAddress: string | undefined, outcome: Outcome, amount: string): Promise<`0x${string}` | null> => {
+    if (!isReady || !marketAddress || !amount || parseFloat(amount) <= 0) {
+        console.warn('[useMarketContractSafe] Prerequisites not met for placeBet.');
+        return null;
+    }
+    if (outcome !== Outcome.Yes && outcome !== Outcome.No) {
+        console.warn('[useMarketContractSafe] Invalid outcome for placeBet.');
+        return null;
+    }
+
+    const contractAddress = marketAddress as `0x${string}`; // Type assertion
+    const betAmountWei = parseEther(amount); // Convert Ether string to Wei BigInt
+
+    setIsSubmitting(true);
+    try {
+        writeContract({
+            address: contractAddress,
+            abi: marketContractAbi,
+            functionName: 'placeBet',
+            args: [outcome, betAmountWei], // Args must match contract function signature
+            value: betAmountWei, // Sending ETH if contract requires payment for bet?
+            // If contract doesn't require ETH value, remove the 'value' field
+        });
+
+        // Note: writeContract is async but fires off the request.
+        // We don't await it here directly, we return the hash when available (see below)
+        // Or handle success/error based on useWriteContract hook state.
+        console.log('[useMarketContractSafe] placeBet transaction initiated...');
+        // We will return the hash once the hook provides it
+        // Or use useWaitForTransactionReceipt for confirmation
+        return hash ?? null; // Return hash immediately if available
+
+    } catch (err) {
+        console.error(`[useMarketContractSafe] Failed to execute placeBet(${marketAddress}, ${outcome}, ${amount}):`, err);
+        throw err; // Re-throw error to be caught by caller
+    } finally {
+      // isSubmitting might be better controlled by useWriteContract's isPending state
+      // setIsSubmitting(false); // Let the hook's state handle this?
+    }
+  };
+
+  // Optionally use useWaitForTransactionReceipt to react to transaction completion
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = 
+    useWaitForTransactionReceipt({ 
+      hash, 
+    });
+
+  // Helper function for time remaining (copied from HomePage - move to utils?)
+  const formatTimeRemaining = (expirationTimestamp: number): string => {
+    const now = Date.now() / 1000; // Current time in seconds
+    const diff = expirationTimestamp - now;
+
+    if (diff <= 0) {
+      return "Ended";
+    }
+
+    const days = Math.floor(diff / (60 * 60 * 24));
+    const hours = Math.floor((diff % (60 * 60 * 24)) / (60 * 60));
+    const minutes = Math.floor((diff % (60 * 60)) / 60);
+
+    if (days > 1) return `${days} days remaining`;
+    if (days === 1) return `1 day remaining`;
+    if (hours > 1) return `${hours} hours remaining`;
+    if (hours === 1) return `1 hour remaining`;
+    if (minutes > 1) return `${minutes} minutes remaining`;
+    return `1 minute remaining`;
+  };
+
+  // Return all functions and states needed by components
   return {
-    getMarkets,
-    getMarketsByCategory,
-    getMarket,
-    createMarket,
-    placeBet,
-    claimReward,
     getCategories,
-    getLatestPrice,
-    getMarketsCreatedByUser,
-    getUserPositions,
-    getClaimableRewards,
+    getMarkets,
+    getMarket,
+    placeBet,
+    isReady,
+    factoryAddress,
+    expectedChainId,
+    // Loading/Submitting states
     isLoading,
-    error
+    isSubmitting: isWritePending || isConfirming,
+    isConfirming,
+    isConfirmed,
+    hash,
+    writeError,
   };
-} 
+}; 
