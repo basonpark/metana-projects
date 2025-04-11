@@ -12,18 +12,13 @@ class PolymarketAPI {
   private useLocalCache: boolean = false;
   
   constructor() {
-    // Polymarket Gamma API endpoint
-    this.apiUrl = process.env.NEXT_PUBLIC_GAMMA_API_URL || 'https://gamma-api.polymarket.com';
+    // Use our local API proxy to avoid CORS issues
+    this.apiUrl = '/api/gamma';
     
-    // Configure HTTP client with optional API key from env
+    // Configure HTTP client
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
-    
-    // Add API key if available
-    if (process.env.NEXT_PUBLIC_GAMMA_API_KEY) {
-      headers['X-API-KEY'] = process.env.NEXT_PUBLIC_GAMMA_API_KEY;
-    }
     
     this.httpClient = axios.create({
       headers,
@@ -31,7 +26,7 @@ class PolymarketAPI {
       timeout: 15000
     });
     
-    console.log('PolymarketAPI initialized with Gamma Markets API URL:', this.apiUrl);
+    console.log('PolymarketAPI initialized with local proxy:', this.apiUrl);
   }
   
   /**

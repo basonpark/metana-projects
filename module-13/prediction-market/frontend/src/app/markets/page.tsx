@@ -7,7 +7,10 @@ import { useMarketContractSafe } from "@/hooks/useMarketContractSafe";
 import { useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 import Link from "next/link";
-import { fetchMarkets } from "@/services/marketAPIService";
+import {
+  fetchActiveMarkets,
+  calculateTimeRemaining,
+} from "@/services/simplifiedAPI";
 
 export default function MarketsPage() {
   const searchParams = useSearchParams();
@@ -21,8 +24,11 @@ export default function MarketsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
-  const { getMarkets, getMarketsByCategory, getCategories } =
-    useMarketContractSafe();
+  const {
+    getMarkets: getBlockchainMarkets,
+    getMarketsByCategory,
+    getCategories,
+  } = useMarketContractSafe();
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -60,85 +66,69 @@ export default function MarketsPage() {
   useEffect(() => {
     const loadMarkets = async () => {
       setIsLoading(true);
+      let displayMarkets: any[] = [];
+      let errorOccurred = false;
+
       try {
-        let fetchedMarkets;
+        console.log("Attempting to fetch markets from simplified API...");
+        const apiMarkets = await fetchActiveMarkets();
+        console.log(`Fetched ${apiMarkets.length} markets from API.`);
 
-        if (selectedCategory) {
-          // Get markets by selected category
-          fetchedMarkets = await getMarketsByCategory(selectedCategory, 0, 20);
-        } else {
-          // Get all markets
-          fetchedMarkets = await getMarkets(0, 20);
-        }
-
-        if (fetchedMarkets && fetchedMarkets.length > 0) {
-          setMarkets(
-            fetchedMarkets.map((market) => ({
-              id: market.address,
-              title: market.question,
-              odds: {
-                yes: Math.round(market.yesPrice * 100),
-                no: Math.round(market.noPrice * 100),
-              },
-              liquidity: market.liquidity,
-              timeRemaining: market.timeRemaining,
-              category: market.category,
-            }))
-          );
-        } else {
-          // Fetch from our simplified API service
-          const apiMarkets = await fetchMarkets();
-
-          // Filter by category if needed
-          const filtered = selectedCategory
+        if (apiMarkets.length > 0) {
+          const filteredApiMarkets = selectedCategory
             ? apiMarkets.filter(
                 (m) =>
                   m.category.toLowerCase() === selectedCategory.toLowerCase()
               )
             : apiMarkets;
 
-          if (filtered.length > 0) {
-            setMarkets(
-              filtered.map((market) => ({
-                id: market.id,
-                title: market.question,
-                odds: {
-                  yes: Math.round(market.yes_price * 100),
-                  no: Math.round(market.no_price * 100),
-                },
-                liquidity: market.liquidity,
-                timeRemaining: getTimeRemaining(market.resolution_time),
-                category: market.category,
-              }))
-            );
-          } else {
-            // Fallback to sample data
-            setMarkets(getSampleMarkets(selectedCategory));
-          }
+          displayMarkets = filteredApiMarkets.map((market) => ({
+            id: market.id,
+            title: market.question,
+            odds: {
+              yes: Math.round(market.yesPrice * 100),
+              no: Math.round(market.noPrice * 100),
+            },
+            liquidity: market.volume,
+            timeRemaining: calculateTimeRemaining(market.endDate),
+            category: market.category,
+          }));
+          console.log(
+            `Displaying ${displayMarkets.length} markets after filtering/mapping.`
+          );
+        } else {
+          console.log("Simplified API returned no markets.");
+          errorOccurred = true;
         }
       } catch (error) {
-        console.error("Error loading markets:", error);
-        setMarkets(getSampleMarkets(selectedCategory));
-      } finally {
-        setIsLoading(false);
+        console.error("Error loading markets from simplified API:", error);
+        errorOccurred = true;
       }
+
+      if (errorOccurred || displayMarkets.length === 0) {
+        console.log("Falling back to sample markets...");
+        displayMarkets = getSampleMarkets(selectedCategory);
+      }
+
+      setMarkets(displayMarkets);
+      setIsLoading(false);
     };
 
     loadMarkets();
-  }, [getMarkets, getMarketsByCategory, selectedCategory]);
+  }, [selectedCategory]);
 
-  // Filter markets by search query
   const filteredMarkets = markets.filter((market) => {
     if (!searchQuery) return true;
-    return (
-      market.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      market.category.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const titleMatch =
+      market.title?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false;
+    const categoryMatch =
+      market.category?.toLowerCase().includes(searchQuery.toLowerCase()) ??
+      false;
+    return titleMatch || categoryMatch;
   });
 
   const handleCategoryChange = (category: string | null) => {
     setSelectedCategory(category);
-    // Update URL without full page reload
     const url = new URL(window.location.href);
     if (category) {
       url.searchParams.set("category", category);
@@ -148,71 +138,70 @@ export default function MarketsPage() {
     window.history.pushState({}, "", url.toString());
   };
 
-  // Sample markets for fallback
   const getSampleMarkets = (category: string | null) => {
     const allMarkets = [
       {
-        id: 1,
+        id: "sample-1",
         title: "Will Bitcoin exceed $100,000 by end of 2024?",
         odds: { yes: 65, no: 35 },
-        liquidity: 250000,
+        liquidity: "250,000",
         timeRemaining: "3 days remaining",
         category: "Crypto",
       },
       {
-        id: 2,
+        id: "sample-2",
         title: "Will the Federal Reserve cut interest rates in Q3?",
         odds: { yes: 42, no: 58 },
-        liquidity: 180000,
+        liquidity: "180,000",
         timeRemaining: "5 days remaining",
         category: "Finance",
       },
       {
-        id: 3,
+        id: "sample-3",
         title: "Will Apple release a new AR headset this year?",
         odds: { yes: 78, no: 22 },
-        liquidity: 320000,
+        liquidity: "320,000",
         timeRemaining: "12 hours remaining",
         category: "Technology",
       },
       {
-        id: 4,
+        id: "sample-4",
         title:
           "Will the Democratic candidate win the 2024 US Presidential Election?",
         odds: { yes: 52, no: 48 },
-        liquidity: 500000,
+        liquidity: "500,000",
         timeRemaining: "4 months remaining",
         category: "Politics",
       },
       {
-        id: 5,
+        id: "sample-5",
         title: "Will Real Madrid win the Champions League?",
         odds: { yes: 30, no: 70 },
-        liquidity: 150000,
+        liquidity: "150,000",
         timeRemaining: "2 months remaining",
         category: "Sports",
       },
       {
-        id: 6,
+        id: "sample-6",
         title: "Will Ethereum price be above $5,000 by July 2024?",
         odds: { yes: 45, no: 55 },
-        liquidity: 280000,
+        liquidity: "280,000",
         timeRemaining: "1 month remaining",
         category: "Crypto",
       },
       {
-        id: 7,
+        id: "sample-7",
         title: "Will Spider-Man 4 be announced before the end of the year?",
         odds: { yes: 62, no: 38 },
-        liquidity: 120000,
+        liquidity: "120,000",
         timeRemaining: "6 months remaining",
         category: "Entertainment",
       },
       {
-        id: 8,
+        id: "sample-8",
         title: "Will Tesla release full self-driving capability this year?",
         odds: { yes: 35, no: 65 },
-        liquidity: 420000,
+        liquidity: "420,000",
         timeRemaining: "8 months remaining",
         category: "Technology",
       },
@@ -222,20 +211,6 @@ export default function MarketsPage() {
     return allMarkets.filter(
       (market) => market.category.toLowerCase() === category.toLowerCase()
     );
-  };
-
-  // Helper function to calculate time remaining
-  const getTimeRemaining = (resolutionTime: number): string => {
-    const now = Math.floor(Date.now() / 1000);
-    const timeRemaining = resolutionTime - now;
-
-    if (timeRemaining <= 0) return "Expired";
-
-    const days = Math.floor(timeRemaining / 86400);
-    const hours = Math.floor((timeRemaining % 86400) / 3600);
-
-    if (days > 0) return `${days}d ${hours}h remaining`;
-    return `${hours}h remaining`;
   };
 
   return (
@@ -249,7 +224,6 @@ export default function MarketsPage() {
           </p>
         </div>
 
-        {/* Search and filters */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div className="relative w-full md:w-96">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -290,19 +264,29 @@ export default function MarketsPage() {
           </div>
         </div>
 
-        {/* Market listings */}
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {isLoading ? (
+            Array.from({ length: 6 }).map((_, index) => (
               <div
-                key={i}
-                className="w-full h-64 rounded-lg bg-muted animate-pulse"
-              ></div>
-            ))}
-          </div>
-        ) : filteredMarkets.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredMarkets.map((market) => (
+                key={index}
+                className="bg-card rounded-lg border shadow-lg p-5 animate-pulse"
+              >
+                <div className="h-4 bg-muted rounded w-1/4 mb-2"></div>
+                <div className="h-6 bg-muted rounded w-3/4 mb-4"></div>
+                <div className="h-4 bg-muted rounded w-1/2 mb-6"></div>
+                <div className="flex justify-between mb-2">
+                  <div className="h-4 bg-muted rounded w-1/3"></div>
+                  <div className="h-4 bg-muted rounded w-1/3"></div>
+                </div>
+                <div className="h-2 bg-muted rounded-full mb-6"></div>
+                <div className="flex justify-between">
+                  <div className="h-4 bg-muted rounded w-1/3"></div>
+                  <div className="h-4 bg-muted rounded w-1/3"></div>
+                </div>
+              </div>
+            ))
+          ) : filteredMarkets.length > 0 ? (
+            filteredMarkets.map((market) => (
               <PredictionMarketCard
                 key={market.id}
                 id={market.id}
@@ -312,28 +296,15 @@ export default function MarketsPage() {
                 timeRemaining={market.timeRemaining}
                 category={market.category}
               />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <h3 className="text-xl font-medium mb-2">No markets found</h3>
-            <p className="text-muted-foreground mb-6">
-              {searchQuery
-                ? `No markets matching "${searchQuery}"`
-                : selectedCategory
-                ? `No markets in the ${selectedCategory} category`
-                : "No markets available at this time"}
-            </p>
-            <Link
-              href="/markets/create"
-              className="inline-block px-4 py-2 rounded-md bg-primary text-primary-foreground"
-            >
-              Create a New Market
-            </Link>
-          </div>
-        )}
+            ))
+          ) : (
+            <div className="col-span-full text-center py-10 text-muted-foreground">
+              No markets found{" "}
+              {selectedCategory ? `in the ${selectedCategory} category` : ""}.
+            </div>
+          )}
+        </div>
 
-        {/* Create Market CTA */}
         {filteredMarkets.length > 0 && (
           <div className="mt-12 text-center">
             <h3 className="text-xl font-medium mb-2">

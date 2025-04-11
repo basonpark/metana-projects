@@ -38,7 +38,8 @@ class GammaAPI {
   private apiKey: string | undefined;
   
   constructor() {
-    this.apiUrl = process.env.NEXT_PUBLIC_GAMMA_API_URL || 'https://gamma-api.polymarket.com';
+    // Use our local API proxy to avoid CORS issues
+    this.apiUrl = '/api/gamma';
     this.apiKey = process.env.NEXT_PUBLIC_GAMMA_API_KEY;
   }
   
