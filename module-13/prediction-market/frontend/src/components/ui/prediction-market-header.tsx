@@ -14,6 +14,8 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
+import { cn } from "@/lib/utils";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 interface NavigationItem {
   title: string;
