@@ -67,4 +67,67 @@ export async function fetchActivePolymarketMarkets(): Promise<PolymarketMarket[]
     // Re-throw the error to be handled by the caller
     throw error;
   }
+}
+
+/**
+ * Fetches details for a specific Polymarket market from the Gamma API (via proxy).
+ *
+ * @param marketId The ID of the market to fetch.
+ * @returns A promise that resolves to the PolymarketMarket object or null if not found/error.
+ */
+export async function fetchMarketById(
+  marketId: string
+): Promise<PolymarketMarket | null> {
+  if (!marketId) {
+    console.error("fetchMarketById requires a marketId.");
+    return null;
+  }
+
+  // Construct the URL string for the specific market
+  const urlString = `${GAMMA_POLYMARKET_API_ENDPOINT}/${marketId}`;
+
+  try {
+    console.log(`Fetching market details from: ${urlString}`);
+    const response = await fetch(urlString, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        console.warn(`Market with ID ${marketId} not found via Gamma API.`);
+        return null; // Return null specifically for 404
+      }
+      // Log detailed error information for other errors
+      const errorBody = await response.text();
+      console.error(
+        `Gamma API request for market ${marketId} failed with status ${response.status}: ${errorBody}`
+      );
+      throw new Error(
+        `Failed to fetch Polymarket market data. Status: ${response.status}`
+      );
+    }
+
+    // Expect a single market object directly
+    const marketData: PolymarketMarket = await response.json();
+
+    // Optional: Basic validation if needed (e.g., check if ID matches)
+    if (!marketData || typeof marketData !== "object" || !marketData.id) {
+      console.error(
+        "Invalid data structure received for single market:",
+        marketData
+      );
+      throw new Error("Invalid data structure received for single market.");
+    }
+
+    console.log(`Successfully fetched market ${marketData.id}`);
+    return marketData;
+  } catch (error) {
+    console.error(`Error fetching market ${marketId} data:`, error);
+    // Re-throw or return null based on desired error handling
+    // Returning null for simplicity
+    return null;
+  }
 } 
