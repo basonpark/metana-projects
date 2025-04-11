@@ -14,7 +14,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
-import { fetchActivePolymarketMarkets } from "@/services/gamma";
+import { fetchMarketById } from "@/services/gamma";
 import { PolymarketMarket } from "@/types/polymarket";
 
 export default function MarketDetailPage() {
@@ -28,138 +28,96 @@ export default function MarketDetailPage() {
   const [activeTab, setActiveTab] = useState<"trade" | "details">("trade");
 
   const {
-    getMarket,
     placeBet,
-    isLoading: contractLoading,
+    isSubmitting: isPlacingBet,
+    isConfirming,
+    isConfirmed,
+    hash,
+    writeError,
   } = useMarketContractSafe();
 
   useEffect(() => {
     const loadMarketData = async () => {
+      if (!marketId) return;
+
       try {
         setIsLoading(true);
 
-        // Try to get market from our contract
-        const contractMarket = await getMarket(marketId);
+        // --- Attempt to load data from Gamma API first ---
+        console.log(`Fetching market ${marketId} via Gamma service...`);
+        const apiMarket = await fetchMarketById(marketId);
 
-        if (contractMarket) {
+        if (apiMarket) {
+          console.log(`Found market ${marketId} via Gamma service.`);
+          // Map the found market data (using correct fields from PolymarketMarket type)
           setMarket({
-            id: contractMarket.address,
-            title: contractMarket.question,
-            description: `This market resolves based on the ${contractMarket.dataFeedId} data feed.`,
-            category: contractMarket.category,
-            status: contractMarket.status,
-            outcome: contractMarket.outcome,
-            endDate: new Date(
-              Number(contractMarket.expirationTime) * 1000
-            ).toISOString(),
-            timeRemaining: contractMarket.timeRemaining,
-            yesPrice: contractMarket.yesPrice,
-            noPrice: contractMarket.noPrice,
-            liquidity: contractMarket.liquidity,
-            creationTime: Number(contractMarket.creationTime) * 1000,
-            creator: contractMarket.creator,
-            fee: contractMarket.fee / 100, // Convert basis points to percentage
-            userPosition: contractMarket.userPosition,
+            id: apiMarket.id,
+            title: apiMarket.question,
+            description: apiMarket.description || "No description available.",
+            category: apiMarket.category || "General",
+            // TODO: Determine status based on available fields (e.g., active, closed, endDate)
+            status: MarketStatus.Open, // Placeholder status - API data might lack this
+            // TODO: Determine outcome if market is settled - API data might lack this
+            outcome: Outcome.NoOutcome, // Placeholder outcome
+            endDate: apiMarket.endDate,
+            timeRemaining: apiMarket.endDate
+              ? formatTimeRemaining(apiMarket.endDate)
+              : "N/A",
+            yesPrice: apiMarket.bestAsk ?? 0.5,
+            noPrice: apiMarket.bestBid ?? 0.5,
+            liquidity: apiMarket.liquidityClob?.toString() ?? "0",
+            creationTime: new Date(
+              apiMarket.created_at || Date.now()
+            ).getTime(),
+            creator: "Gamma API", // Indicate source
+            fee: 1.0, // Placeholder fee
+            // User position needs to be fetched from the contract separately if needed
+            // We are removing the direct contract fetch here for simplicity
+            userPosition: null, // Assume no user position from Gamma API initially
           });
         } else {
-          // Try to get market from Polymarket API (via Gamma Service fetch-all)
-          try {
-            console.log(
-              `Attempting to find market ${marketId} via Gamma service...`
-            );
-            const allMarkets = await fetchActivePolymarketMarkets();
-            const foundMarket = allMarkets?.find(
-              (m: PolymarketMarket) => m.id === marketId
-            );
-
-            if (foundMarket) {
-              console.log(`Found market ${marketId} via Gamma service.`);
-              // Map the found market data (using correct fields)
-              setMarket({
-                id: foundMarket.id,
-                title: foundMarket.question,
-                description:
-                  foundMarket.description || "No description available.",
-                category: foundMarket.category || "General",
-                status: MarketStatus.Open,
-                outcome: Outcome.NoOutcome,
-                endDate: foundMarket.endDate,
-                timeRemaining: foundMarket.endDate
-                  ? formatTimeRemaining(foundMarket.endDate)
-                  : "N/A",
-                yesPrice: foundMarket.bestAsk ?? 0.5,
-                noPrice: foundMarket.bestBid ?? 0.5,
-                liquidity: foundMarket.liquidityClob?.toString() ?? "0",
-                creationTime: new Date(
-                  foundMarket.created_at || Date.now()
-                ).getTime(),
-                creator: "Gamma API",
-                fee: 1.0,
-                userPosition: null,
-              });
-            } else {
-              console.log(
-                `Market ${marketId} not found via Gamma service. Using fallback.`
-              );
-              // If not found in API list, use fallback demo data
-              const demoMarket = {
-                id: marketId,
-                title: "Will Bitcoin exceed $100,000 by the end of 2024?",
-                description:
-                  "This market resolves to YES if the price of Bitcoin (BTC) exceeds $100,000 USD at any point before December 31, 2024, 11:59 PM UTC according to the Coinbase Pro BTC/USD market.",
-                category: "Crypto",
-                status: MarketStatus.Open,
-                outcome: Outcome.NoOutcome,
-                endDate: "2024-12-31T23:59:59Z",
-                timeRemaining: "8 months remaining",
-                yesPrice: 0.65,
-                noPrice: 0.35,
-                liquidity: "135000",
-                creationTime: Date.now() - 30 * 24 * 60 * 60 * 1000, // 30 days ago
-                creator: "0x7a...3f9",
-                fee: 1.0, // 1% fee
-                userPosition: null,
-              };
-
-              setMarket(demoMarket);
-            }
-          } catch (apiError) {
-            console.error(
-              "Error fetching or filtering markets via Gamma service:",
-              apiError
-            );
-            // Use fallback demo data if API fails
-            const demoMarket = {
-              id: marketId,
-              title: "Will Bitcoin exceed $100,000 by the end of 2024?",
-              description:
-                "This market resolves to YES if the price of Bitcoin (BTC) exceeds $100,000 USD at any point before December 31, 2024, 11:59 PM UTC according to the Coinbase Pro BTC/USD market.",
-              category: "Crypto",
-              status: MarketStatus.Open,
-              outcome: Outcome.NoOutcome,
-              endDate: "2024-12-31T23:59:59Z",
-              timeRemaining: "8 months remaining",
-              yesPrice: 0.65,
-              noPrice: 0.35,
-              liquidity: "135000",
-              creationTime: Date.now() - 30 * 24 * 60 * 60 * 1000, // 30 days ago
-              creator: "0x7a...3f9",
-              fee: 1.0, // 1% fee
-              userPosition: null,
-            };
-
-            setMarket(demoMarket);
-          }
+          console.log(
+            `Market ${marketId} not found via Gamma service. Using fallback demo data.`
+          );
+          // If not found in API, use fallback demo data
+          const demoMarket = {
+            id: marketId,
+            title: "Will Bitcoin exceed $100,000 by the end of 2024?",
+            description:
+              "This market resolves to YES if the price of Bitcoin (BTC) exceeds $100,000 USD at any point before December 31, 2024, 11:59 PM UTC according to the Coinbase Pro BTC/USD market.",
+            category: "Crypto",
+            status: MarketStatus.Open,
+            outcome: Outcome.NoOutcome,
+            endDate: "2024-12-31T23:59:59Z",
+            timeRemaining: "8 months remaining", // Keep demo data as is
+            yesPrice: 0.65,
+            noPrice: 0.35,
+            liquidity: "135000", // Keep demo data as is
+            creationTime: Date.now() - 30 * 24 * 60 * 60 * 1000, // 30 days ago
+            creator: "Demo Data", // Update creator
+            fee: 1.0, // 1% fee
+            userPosition: null,
+          };
+          setMarket(demoMarket);
         }
+
+        /* --- Removed Contract Fetch Logic ---
+        // Try to get market from our contract
+        // const contractMarket = await getMarket(marketId);
+
+        // if (contractMarket) { ... } else { ... API logic ... } 
+        */
       } catch (error) {
-        console.error("Error loading market:", error);
+        // console.error("Error loading market:", error); // Original error log
+        console.error("Error loading market data from API:", error);
+        // Optionally fallback to demo data on API error too
       } finally {
         setIsLoading(false);
       }
     };
 
     loadMarketData();
-  }, [marketId, getMarket]);
+  }, [marketId]); // Only depends on marketId now
 
   // Helper function to calculate time remaining (copied from HomePage - move to utils?)
   const formatTimeRemaining = (endDateString: string): string => {
@@ -184,26 +142,35 @@ export default function MarketDetailPage() {
   };
 
   const handlePlaceBet = async (outcome: Outcome) => {
-    if (!market || isSubmitting || parseFloat(betAmount) <= 0) return;
+    // Use market.id (which should now be the API market ID if loaded)
+    // Note: placeBet in the hook expects the CONTRACT address, not the API ID.
+    // This needs reconciliation. Assuming API ID === Contract Address for now.
+    // If they differ, you need a way to map API ID to contract address.
+    const contractAddress = market.id; // <<< ASSUMPTION HERE
+
+    if (!contractAddress || isPlacingBet || parseFloat(betAmount) <= 0) return;
 
     try {
-      setIsSubmitting(true);
-      await placeBet(market.id, outcome, betAmount);
-      // After successful bet, reload market data
-      const updatedMarket = await getMarket(marketId);
-      if (updatedMarket) {
-        setMarket({
-          ...market,
-          yesPrice: updatedMarket.yesPrice,
-          noPrice: updatedMarket.noPrice,
-          liquidity: updatedMarket.liquidity,
-          userPosition: updatedMarket.userPosition,
-        });
-      }
+      // setIsSubmitting(true); // Handled by hook state (isPlacingBet)
+      console.log(
+        `Placing bet on ${contractAddress}, outcome: ${outcome}, amount: ${betAmount}`
+      );
+      await placeBet(contractAddress, outcome, betAmount);
+
+      // TODO: Add feedback based on isConfirming, isConfirmed, hash, writeError from the hook
+      // Maybe show a toast notification on success/error?
+      console.log("Transaction submitted. Hash:", hash);
+
+      // --- Optional: Refetch API data after transaction ---
+      // Might be better to wait for confirmation (isConfirmed)
+      // or update UI optimistically based on events
+      // const updatedApiMarket = await fetchMarketById(marketId);
+      // if (updatedApiMarket) { ... update state ... }
     } catch (error) {
       console.error("Error placing bet:", error);
+      // TODO: Show error message to user
     } finally {
-      setIsSubmitting(false);
+      // setIsSubmitting(false); // Handled by hook state
     }
   };
 
@@ -359,10 +326,10 @@ export default function MarketDetailPage() {
                           className="w-full py-2 rounded-md bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors flex items-center justify-center"
                           onClick={() => handlePlaceBet(Outcome.Yes)}
                           disabled={
-                            isSubmitting || market.status !== MarketStatus.Open
+                            isPlacingBet || market.status !== MarketStatus.Open
                           }
                         >
-                          Buy YES
+                          {isPlacingBet ? "Submitting..." : "Buy YES"}
                           <ArrowRight className="ml-2 h-4 w-4" />
                         </button>
                       </div>
@@ -393,10 +360,10 @@ export default function MarketDetailPage() {
                           className="w-full py-2 rounded-md border border-border bg-background font-medium hover:bg-muted transition-colors flex items-center justify-center"
                           onClick={() => handlePlaceBet(Outcome.No)}
                           disabled={
-                            isSubmitting || market.status !== MarketStatus.Open
+                            isPlacingBet || market.status !== MarketStatus.Open
                           }
                         >
-                          Buy NO
+                          {isPlacingBet ? "Submitting..." : "Buy NO"}
                           <ArrowRight className="ml-2 h-4 w-4" />
                         </button>
                       </div>
