@@ -16,25 +16,15 @@ import {
 import Link from "next/link";
 import { fetchMarketById } from "@/services/gamma";
 import { PolymarketMarket } from "@/types/polymarket";
+import { formatTimeRemaining } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 export default function MarketDetailPage() {
   const params = useParams();
   const marketId = params.id as string;
 
-  const [market, setMarket] = useState<any>(null);
-  const [betAmount, setBetAmount] = useState<string>("10");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [market, setMarket] = useState<PolymarketMarket | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"trade" | "details">("trade");
-
-  const {
-    placeBet,
-    isSubmitting: isPlacingBet,
-    isConfirming,
-    isConfirmed,
-    hash,
-    writeError,
-  } = useMarketContractSafe();
 
   useEffect(() => {
     const loadMarketData = async () => {
@@ -52,51 +42,40 @@ export default function MarketDetailPage() {
           // Map the found market data (using correct fields from PolymarketMarket type)
           setMarket({
             id: apiMarket.id,
-            title: apiMarket.question,
+            question: apiMarket.question,
+            slug: apiMarket.slug || undefined,
             description: apiMarket.description || "No description available.",
             category: apiMarket.category || "General",
-            // TODO: Determine status based on available fields (e.g., active, closed, endDate)
-            status: MarketStatus.Open, // Placeholder status - API data might lack this
-            // TODO: Determine outcome if market is settled - API data might lack this
-            outcome: Outcome.NoOutcome, // Placeholder outcome
             endDate: apiMarket.endDate,
-            timeRemaining: apiMarket.endDate
-              ? formatTimeRemaining(apiMarket.endDate)
-              : "N/A",
-            yesPrice: apiMarket.bestAsk ?? 0.5,
-            noPrice: apiMarket.bestBid ?? 0.5,
-            liquidity: apiMarket.liquidityClob?.toString() ?? "0",
-            creationTime: new Date(
-              apiMarket.created_at || Date.now()
-            ).getTime(),
-            creator: "Gamma API", // Indicate source
-            fee: 1.0, // Placeholder fee
-            // User position needs to be fetched from the contract separately if needed
-            // We are removing the direct contract fetch here for simplicity
-            userPosition: null, // Assume no user position from Gamma API initially
+            liquidityClob: apiMarket.liquidityClob,
+            volumeClob: apiMarket.volumeClob,
+            bestBid: apiMarket.bestBid,
+            bestAsk: apiMarket.bestAsk,
+            created_at: apiMarket.created_at || new Date().toISOString(),
+            outcomes: apiMarket.outcomes,
+            volume: apiMarket.volume,
           });
         } else {
           console.log(
             `Market ${marketId} not found via Gamma service. Using fallback demo data.`
           );
-          // If not found in API, use fallback demo data
-          const demoMarket = {
+          // Define demo data matching the PolymarketMarket type structure
+          const demoMarket: PolymarketMarket = {
             id: marketId,
-            title: "Will Bitcoin exceed $100,000 by the end of 2024?",
-            description:
-              "This market resolves to YES if the price of Bitcoin (BTC) exceeds $100,000 USD at any point before December 31, 2024, 11:59 PM UTC according to the Coinbase Pro BTC/USD market.",
-            category: "Crypto",
-            status: MarketStatus.Open,
-            outcome: Outcome.NoOutcome,
+            question: "Will Bitcoin exceed $100,000 by the end of 2024?",
+            slug: "will-bitcoin-exceed-100000-by-end-of-2024",
+            description: "...", // Add description
+            outcomes: '["Yes", "No"]', // Example outcomes string
+            created_at: new Date(
+              Date.now() - 30 * 24 * 60 * 60 * 1000
+            ).toISOString(),
             endDate: "2024-12-31T23:59:59Z",
-            timeRemaining: "8 months remaining", // Keep demo data as is
-            yesPrice: 0.65,
-            noPrice: 0.35,
-            liquidity: "135000", // Keep demo data as is
-            creationTime: Date.now() - 30 * 24 * 60 * 60 * 1000, // 30 days ago
-            creator: "Demo Data", // Update creator
-            fee: 1.0, // 1% fee
-            userPosition: null,
+            volume: 135000, // Example volume
+            category: "Crypto",
+            bestAsk: 0.65,
+            bestBid: 0.35,
+            liquidityClob: 135000, // Example liquidity
+            // Add other required fields from PolymarketMarket if needed
           };
           setMarket(demoMarket);
         }
@@ -118,66 +97,6 @@ export default function MarketDetailPage() {
 
     loadMarketData();
   }, [marketId]); // Only depends on marketId now
-
-  // Helper function to calculate time remaining (copied from HomePage - move to utils?)
-  const formatTimeRemaining = (endDateString: string): string => {
-    const now = new Date();
-    const end = new Date(endDateString);
-    const diff = end.getTime() - now.getTime();
-
-    if (diff <= 0) {
-      return "Ended";
-    }
-
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-    if (days > 1) return `${days} days remaining`;
-    if (days === 1) return `1 day remaining`;
-    if (hours > 1) return `${hours} hours remaining`;
-    if (hours === 1) return `1 hour remaining`;
-    if (minutes > 1) return `${minutes} minutes remaining`;
-    return `1 minute remaining`;
-  };
-
-  const handlePlaceBet = async (outcome: Outcome) => {
-    // Use market.id (which should now be the API market ID if loaded)
-    // Note: placeBet in the hook expects the CONTRACT address, not the API ID.
-    // This needs reconciliation. Assuming API ID === Contract Address for now.
-    // If they differ, you need a way to map API ID to contract address.
-    const contractAddress = market.id; // <<< ASSUMPTION HERE
-
-    if (!contractAddress || isPlacingBet || parseFloat(betAmount) <= 0) return;
-
-    try {
-      // setIsSubmitting(true); // Handled by hook state (isPlacingBet)
-      console.log(
-        `Placing bet on ${contractAddress}, outcome: ${outcome}, amount: ${betAmount}`
-      );
-      await placeBet(contractAddress, outcome, betAmount);
-
-      // TODO: Add feedback based on isConfirming, isConfirmed, hash, writeError from the hook
-      // Maybe show a toast notification on success/error?
-      console.log("Transaction submitted. Hash:", hash);
-
-      // --- Optional: Refetch API data after transaction ---
-      // Might be better to wait for confirmation (isConfirmed)
-      // or update UI optimistically based on events
-      // const updatedApiMarket = await fetchMarketById(marketId);
-      // if (updatedApiMarket) { ... update state ... }
-    } catch (error) {
-      console.error("Error placing bet:", error);
-      // TODO: Show error message to user
-    } finally {
-      // setIsSubmitting(false); // Handled by hook state
-    }
-  };
-
-  // Format price as percentage
-  const formatPriceAsPercent = (price: number) => {
-    return `${(price * 100).toFixed(0)}%`;
-  };
 
   // Format date to readable string
   const formatDate = (dateString: string) => {
@@ -253,223 +172,46 @@ export default function MarketDetailPage() {
                 <div className="inline-block px-2 py-1 text-xs font-medium rounded-full bg-muted text-muted-foreground">
                   {market.category}
                 </div>
-                <h1 className="text-2xl font-bold">{market.title}</h1>
+                <h1 className="text-2xl font-bold">{market.question}</h1>
 
                 <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center text-muted-foreground">
                     <Clock className="mr-1 h-4 w-4" />
-                    <span>{market.timeRemaining}</span>
+                    <span>
+                      {market.endDate
+                        ? formatTimeRemaining(market.endDate)
+                        : "N/A"}
+                    </span>
                   </div>
 
                   <div className="flex items-center text-muted-foreground">
                     <DollarSign className="mr-1 h-4 w-4" />
                     <span>
-                      Liquidity: ${parseInt(market.liquidity).toLocaleString()}
+                      Liquidity: $
+                      {market.liquidityClob?.toLocaleString() ?? "0"}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Tab Navigation */}
-              <div className="border-b border-border">
-                <div className="flex -mb-px">
-                  <button
-                    className={`py-2 px-4 text-sm font-medium border-b-2 ${
-                      activeTab === "trade"
-                        ? "border-primary text-primary"
-                        : "border-transparent text-muted-foreground hover:text-foreground"
-                    }`}
-                    onClick={() => setActiveTab("trade")}
-                  >
-                    Trade
-                  </button>
-                  <button
-                    className={`py-2 px-4 text-sm font-medium border-b-2 ${
-                      activeTab === "details"
-                        ? "border-primary text-primary"
-                        : "border-transparent text-muted-foreground hover:text-foreground"
-                    }`}
-                    onClick={() => setActiveTab("details")}
-                  >
-                    Details
-                  </button>
-                </div>
-              </div>
-
-              {/* Trading Tab Content */}
-              {activeTab === "trade" && (
-                <div className="space-y-6">
-                  {/* Trading cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* YES Card */}
-                    <div className="rounded-lg border border-border p-5 hover:border-primary/70 transition-colors">
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xl font-bold">YES</span>
-                          <span className="text-sm font-medium">
-                            {formatPriceAsPercent(market.yesPrice)}
-                          </span>
-                        </div>
-
-                        <div className="h-2 w-full rounded-full overflow-hidden flex">
-                          <div
-                            className="h-full bg-primary rounded-l-full"
-                            style={{ width: `${market.yesPrice * 100}%` }}
-                          />
-                          <div
-                            className="h-full bg-muted-foreground/30 rounded-r-full"
-                            style={{ width: `${market.noPrice * 100}%` }}
-                          />
-                        </div>
-
-                        <button
-                          className="w-full py-2 rounded-md bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors flex items-center justify-center"
-                          onClick={() => handlePlaceBet(Outcome.Yes)}
-                          disabled={
-                            isPlacingBet || market.status !== MarketStatus.Open
-                          }
-                        >
-                          {isPlacingBet ? "Submitting..." : "Buy YES"}
-                          <ArrowRight className="ml-2 h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* NO Card */}
-                    <div className="rounded-lg border border-border p-5 hover:border-primary/70 transition-colors">
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xl font-bold">NO</span>
-                          <span className="text-sm font-medium">
-                            {formatPriceAsPercent(market.noPrice)}
-                          </span>
-                        </div>
-
-                        <div className="h-2 w-full rounded-full overflow-hidden flex">
-                          <div
-                            className="h-full bg-muted-foreground/30 rounded-l-full"
-                            style={{ width: `${market.noPrice * 100}%` }}
-                          />
-                          <div
-                            className="h-full bg-primary rounded-r-full"
-                            style={{ width: `${market.yesPrice * 100}%` }}
-                          />
-                        </div>
-
-                        <button
-                          className="w-full py-2 rounded-md border border-border bg-background font-medium hover:bg-muted transition-colors flex items-center justify-center"
-                          onClick={() => handlePlaceBet(Outcome.No)}
-                          disabled={
-                            isPlacingBet || market.status !== MarketStatus.Open
-                          }
-                        >
-                          {isPlacingBet ? "Submitting..." : "Buy NO"}
-                          <ArrowRight className="ml-2 h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Bet amount section */}
-                  <div className="p-4 rounded-lg border border-border">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Bet Amount</span>
-                        <div className="flex items-center">
-                          <DollarSign className="h-4 w-4 text-muted-foreground" />
-                          <input
-                            type="number"
-                            value={betAmount}
-                            onChange={(e) => setBetAmount(e.target.value)}
-                            className="w-24 p-2 text-right bg-background border border-input rounded-md"
-                            min="1"
-                            disabled={market.status !== MarketStatus.Open}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="text-muted-foreground">
-                          Potential Profit (YES)
-                        </div>
-                        <div className="font-medium">
-                          $
-                          {(
-                            parseFloat(betAmount) / market.yesPrice -
-                            parseFloat(betAmount)
-                          ).toFixed(2)}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="text-muted-foreground">
-                          Potential Profit (NO)
-                        </div>
-                        <div className="font-medium">
-                          $
-                          {(
-                            parseFloat(betAmount) / market.noPrice -
-                            parseFloat(betAmount)
-                          ).toFixed(2)}
-                        </div>
-                      </div>
-
-                      {market.fee > 0 && (
-                        <div className="flex items-center justify-between text-sm">
-                          <div className="text-muted-foreground">
-                            Market fee
-                          </div>
-                          <div className="font-medium">{market.fee}%</div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* User position section (if connected and has position) */}
-                  {market.userPosition && (
-                    <div className="p-4 rounded-lg border border-border bg-muted/10">
-                      <h3 className="text-sm font-medium mb-3">
-                        Your Position
-                      </h3>
-                      <div className="space-y-2">
-                        {parseInt(market.userPosition.yes) > 0 && (
-                          <div className="flex items-center justify-between text-sm">
-                            <span>YES shares</span>
-                            <span className="font-medium">
-                              {parseInt(
-                                market.userPosition.yes
-                              ).toLocaleString()}
-                            </span>
-                          </div>
-                        )}
-                        {parseInt(market.userPosition.no) > 0 && (
-                          <div className="flex items-center justify-between text-sm">
-                            <span>NO shares</span>
-                            <span className="font-medium">
-                              {parseInt(
-                                market.userPosition.no
-                              ).toLocaleString()}
-                            </span>
-                          </div>
-                        )}
-                        <div className="flex items-center justify-between text-sm">
-                          <span>Potential Payout</span>
-                          <span className="font-medium">
-                            $
-                            {parseInt(
-                              market.userPosition.potential
-                            ).toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
               {/* Details Tab Content */}
-              {activeTab === "details" && (
-                <div className="space-y-6">
+              <div className="space-y-6 mt-6">
+                {/* Add Polymarket Link Button */}
+                {market.slug && (
+                  <a
+                    href={`https://polymarket.com/market/${market.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full"
+                  >
+                    <Button variant="outline" className="w-full">
+                      View / Bet on Polymarket
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </a>
+                )}
+
+                <div className="space-y-4">
                   <div className="space-y-4">
                     <h3 className="text-lg font-medium">Market Description</h3>
                     <div className="text-muted-foreground whitespace-pre-line font-light">
@@ -483,7 +225,8 @@ export default function MarketDetailPage() {
                         Resolution Date
                       </div>
                       <div className="font-medium">
-                        {formatDate(market.endDate)}
+                        {/* Ensure endDate exists before formatting */}
+                        {market.endDate ? formatDate(market.endDate) : "N/A"}
                       </div>
                     </div>
                     <div className="p-4 rounded-lg bg-muted/10">
@@ -491,25 +234,23 @@ export default function MarketDetailPage() {
                         Created
                       </div>
                       <div className="font-medium">
-                        {new Date(market.creationTime).toLocaleDateString()}
+                        {/* Ensure created_at exists before formatting */}
+                        {market.created_at
+                          ? formatDate(market.created_at)
+                          : "N/A"}
                       </div>
                     </div>
                     <div className="p-4 rounded-lg bg-muted/10">
                       <div className="text-sm text-muted-foreground">
                         Creator
                       </div>
-                      <div className="font-medium">{market.creator}</div>
+                      <div className="font-medium">N/A (via Gamma API)</div>
                     </div>
                     <div className="p-4 rounded-lg bg-muted/10">
                       <div className="text-sm text-muted-foreground">
                         Status
                       </div>
-                      <div className="font-medium">
-                        {MarketStatus[market.status]}
-                        {market.status === MarketStatus.Settled && (
-                          <span> ({Outcome[market.outcome]})</span>
-                        )}
-                      </div>
+                      <div className="font-medium">N/A</div>
                     </div>
                   </div>
 
@@ -525,7 +266,7 @@ export default function MarketDetailPage() {
                     </p>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>

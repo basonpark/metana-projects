@@ -20,7 +20,7 @@ export interface OutcomePrices {
  */
 export interface PolymarketMarket {
   id: string;
-  slug: string;
+  slug?: string;
   question: string;
   outcomes: string; // Actual: JSON string like "[\"Yes\", \"No\"]"
   volume: number; // Assuming volume is a number - Keeping this, maybe use volumeClob/Amm?
