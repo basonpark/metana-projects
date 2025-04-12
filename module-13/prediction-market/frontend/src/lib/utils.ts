@@ -57,8 +57,8 @@ export const categorizeMarket = (market: PolymarketMarket): string => {
   const categories: { [key: string]: RegExp } = {
     'Crypto': /(bitcoin|ethereum|crypto|blockchain|price|btc|eth|solana|token|nft|web3|defi|wallet|mining|airdrop|doge|shiba|coin|altcoin|hodl|staking|yield|liquidity|stablecoin|dao|dapp|metaverse)/i,
     'Tech': /(tech|ai|artificial intelligence|spacex|tesla|starship|google|apple|microsoft|amazon|meta|facebook|twitter|x|nvidia|amd|intel|software|hardware|gadget|phone|laptop|internet|data|cloud|robot|semiconductor|algorithm|code|programming|startup|innovation)/i,
+    'Sports': /(NBA|super bowl|nba|nfl|mlb|nhl|football|basketball|baseball|hockey|soccer|fifa|world cup|olympics|champion|league|team|player|match|game|score|playoff|tournament|draft|transfer|tennis|golf|ufc|mma|esports|gaming)/i,
     'Politics': /(election|president|congress|vote|biden|trump|democrat|republican|senate|house|white house|government|policy|law|political|party|candidate|primary|debate|poll|geopolitics|ukraine|russia|china|eu|un|nato)/i,
-    'Sports': /(super bowl|nba|nfl|mlb|nhl|football|basketball|baseball|hockey|soccer|fifa|world cup|olympics|champion|league|team|player|match|game|score|playoff|tournament|draft|transfer|tennis|golf|ufc|mma|esports|gaming)/i,
     'Entertainment': /(oscars|grammys|emmys|movie|film|tv|television|series|netflix|hbo|disney|hollywood|actor|actress|director|celebrity|music|artist|album|song|concert|tour|box office|streaming|award|show|pop culture)/i,
     'Finance': /(stock|market|finance|economy|inflation|interest rate|fed|federal reserve|gdp|recession|growth|earnings|ipo|investment|dow jones|nasdaq|s&p 500|trading|bank|loan|mortgage|debt|currency|forex|commodities|oil|gold|bonds|yield)/i,
     'World': /(world|global|international|country|nation|region|war|conflict|peace|treaty|diplomacy|climate|environment|energy|disaster|news|headline|event|summit|geopolitics)/i, // Added World category
