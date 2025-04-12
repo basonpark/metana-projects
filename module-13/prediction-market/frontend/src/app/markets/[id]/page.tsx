@@ -254,7 +254,7 @@ export default function MarketDetailPage() {
                   className="block w-full"
                 >
                   <Button variant="outline" className="w-full">
-                    View / Bet on Polymarket
+                    View on Polymarket
                     <ExternalLink className="ml-2 h-4 w-4" />
                   </Button>
                 </a>
