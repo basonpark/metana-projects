@@ -1,386 +1,377 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { RootLayout } from "@/components/layout/RootLayout";
 import { PredictionMarketCard } from "@/components/ui/prediction-market-card";
 import Link from "next/link";
-import { useMarketContractSafe } from "../hooks/useMarketContractSafe";
-import {
-  Market,
-  MarketStatus,
-  Outcome,
-  MarketWithMetadata,
-} from "@/types/contracts";
+import { PolymarketMarket } from "@/types/polymarket";
 import { fetchActivePolymarketMarkets } from "@/services/gamma";
 import { ProphitHero } from "@/components/ProphitHero";
+import { categorizeMarket, formatTimeRemaining } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Search } from "lucide-react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const ITEMS_PER_PAGE = 30;
+const getPaginationNumbers = (
+  currentPage: number,
+  totalPages: number,
+  siblings = 1
+): (number | "...")[] => {
+  const totalNumbers = siblings * 2 + 3;
+  const totalBlocks = totalNumbers + 2;
+
+  if (totalPages <= totalBlocks) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+
+  const leftSiblingIndex = Math.max(currentPage - siblings, 1);
+  const rightSiblingIndex = Math.min(currentPage + siblings, totalPages);
+
+  const shouldShowLeftDots = leftSiblingIndex > 2;
+  const shouldShowRightDots = rightSiblingIndex < totalPages - 1;
+
+  const firstPageIndex = 1;
+  const lastPageIndex = totalPages;
+
+  if (!shouldShowLeftDots && shouldShowRightDots) {
+    let leftItemCount = 3 + 2 * siblings;
+    let leftRange = Array.from({ length: leftItemCount }, (_, i) => i + 1);
+    return [...leftRange, "...", lastPageIndex];
+  }
+
+  if (shouldShowLeftDots && !shouldShowRightDots) {
+    let rightItemCount = 3 + 2 * siblings;
+    let rightRange = Array.from(
+      { length: rightItemCount },
+      (_, i) => totalPages - rightItemCount + 1 + i
+    );
+    return [firstPageIndex, "...", ...rightRange];
+  }
+
+  if (shouldShowLeftDots && shouldShowRightDots) {
+    let middleRange = Array.from(
+      { length: rightSiblingIndex - leftSiblingIndex + 1 },
+      (_, i) => leftSiblingIndex + i
+    );
+    return [firstPageIndex, "...", ...middleRange, "...", lastPageIndex];
+  }
+
+  return Array.from({ length: totalPages }, (_, i) => i + 1);
+};
 
 export default function HomePage() {
-  const [featuredMarkets, setFeaturedMarkets] = useState<any[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
+  const [allMarkets, setAllMarkets] = useState<PolymarketMarket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortOrder, setSortOrder] = useState<string>("timeRemaining");
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [usingMockData, setUsingMockData] = useState(false);
-  const { getMarkets, getCategories } = useMarketContractSafe();
 
-  // Function to load market data
   const loadMarketData = async () => {
+    if (isRefreshing) return;
+
+    setIsLoading(true);
+    setIsRefreshing(true);
+    setError(null);
+    console.log("Homepage: Fetching all active markets...");
     try {
-      // If we're already refreshing, don't start a new refresh
-      if (isRefreshing) return;
-
-      setIsRefreshing(true);
-      console.log("Fetching latest market data via Gamma service");
-
-      // Define the market data structure for type safety
-      interface MarketData {
-        id: string | number;
-        title: string;
-        odds: {
-          yes: number;
-          no: number;
-        };
-        liquidity: string | number;
-        timeRemaining: string;
-        category: string;
-        isFeatured?: boolean; // Make it optional
-        image?: string; // Added image field
-      }
-
-      // Fetch data from Polymarket API
-      const polymarketMarkets = await fetchActivePolymarketMarkets();
-
-      // Check if we're using mock data by looking at the IDs
-      const isMockData =
-        polymarketMarkets.length > 0 &&
-        polymarketMarkets[0].id.toString().startsWith("mock-");
-      setUsingMockData(isMockData);
-
-      if (polymarketMarkets && polymarketMarkets.length > 0) {
-        console.log(
-          `Successfully fetched ${polymarketMarkets.length} markets${
-            isMockData ? " (mock data)" : ""
-          } via Gamma service`
-        );
-
-        const marketsData = polymarketMarkets.map((market) => ({
-          id: market.id,
-          title: market.question,
-          odds: {
-            yes: Math.round((market.bestAsk ?? 0.5) * 100),
-            no: 100 - Math.round((market.bestAsk ?? 0.5) * 100),
-          },
-          liquidity: market.liquidityClob?.toString() ?? "0",
-          timeRemaining: market.endDate
-            ? formatTimeRemaining(market.endDate)
-            : "N/A",
-          category: market.category?.trim() ? market.category : "Other",
-          image: market.image || undefined,
-        }));
-        setFeaturedMarkets(marketsData);
-        setLastUpdated(new Date());
-      } else {
-        console.warn("No markets found via Gamma service");
-        // Only fallback to contract data if we have no markets yet
-        if (featuredMarkets.length === 0) {
-          await loadFallbackData();
-        }
-      }
-    } catch (error) {
-      console.error("Error loading market data via Gamma service:", error);
-      // Only fallback if we have no markets yet
-      if (featuredMarkets.length === 0) {
-        await loadFallbackData();
-        setUsingMockData(true);
-      }
+      const fetchedMarkets = await fetchActivePolymarketMarkets();
+      console.log(`Homepage: Fetched ${fetchedMarkets.length} markets.`);
+      setAllMarkets(fetchedMarkets || []);
+    } catch (err) {
+      console.error("Homepage: Error loading market data:", err);
+      setError(
+        err instanceof Error ? err.message : "An unknown error occurred."
+      );
+      setAllMarkets([]);
     } finally {
-      setIsRefreshing(false);
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
-  // Helper function to calculate time remaining (can be moved to a utils file)
-  const formatTimeRemaining = (endDateString: string): string => {
-    const now = new Date();
-    const end = new Date(endDateString);
-    const diff = end.getTime() - now.getTime();
-
-    if (diff <= 0) {
-      return "Ended";
-    }
-
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-    if (days > 1) return `${days} days remaining`;
-    if (days === 1) return `1 day remaining`;
-    if (hours > 1) return `${hours} hours remaining`;
-    if (hours === 1) return `1 hour remaining`;
-    if (minutes > 1) return `${minutes} minutes remaining`;
-    return `1 minute remaining`;
-  };
-
-  // Function to load categories
-  const loadCategories = async () => {
-    // Removed attempt to fetch categories from Polymarket/Gamma API as gamma.ts doesn't provide it
-    // The code will now directly try the contract or use defaults.
-    // try {
-    //   // Try to get categories from Polymarket API
-    //   console.log("Fetching categories from Polymarket API");
-    //   const polymarketCategories = await polymarketAPI.getCategories();
-
-    //   if (polymarketCategories.length > 0) {
-    //     console.log(
-    //       `Successfully fetched ${polymarketCategories.length} categories`
-    //     );
-    //     setCategories(polymarketCategories);
-    //     return;
-    //   }
-    // } catch (apiError) {
-    //   console.log("Could not fetch categories from Polymarket API", apiError);
-    // }
-
-    // If no categories from API, try contract
-    try {
-      console.log("Trying to fetch categories from contract");
-      const cats = await getCategories();
-      if (cats && cats.length > 0) {
-        setCategories(cats);
-        return;
-      }
-    } catch (contractError) {
-      console.log("Could not fetch categories from contract", contractError);
-    }
-
-    // Use default categories as fallback
-    console.log("Using default categories as fallback");
-    setCategories([
-      "Crypto",
-      "Finance",
-      "Politics",
-      "Sports",
-      "Technology",
-      "Entertainment",
-    ]);
-  };
-
-  // Function to load fallback data from contract or mock data
-  const loadFallbackData = async () => {
-    // try {
-    // Try to get markets from contract
-    // try {
-    //   console.log("Trying to load data from contract");
-    //   const markets = await getMarkets(0, 6);
-    //   if (markets && markets.length > 0) {
-    //     // --- THIS LOGIC IS INCORRECT as getMarkets returns addresses, not MarketWithMetadata ---
-    //     // // Need to implement getMarketDetails(address) and loop
-    //     // const marketsData = markets.map((market: MarketWithMetadata) => ({ // Added type MarketWithMetadata
-    //     //   id: market.address,
-    //     //   title: market.question,
-    //     //   odds: {
-    //     //     yes: Math.round(market.yesPrice * 100),
-    //     //     no: Math.round(market.noPrice * 100),
-    //     //   },
-    //     //   liquidity: market.liquidity,
-    //     //   timeRemaining: market.timeRemaining,
-    //     //   category: market.category,
-    //     // }));
-    //     // setFeaturedMarkets(marketsData);
-    //     // return; // Exit if contract data is loaded
-    //     console.warn("Contract data loading is not fully implemented yet. Need getMarketDetails.");
-    //   }
-    // } catch (contractError) {
-    //   console.log("Contract interaction failed or not ready yet", contractError);
-    // }
-
-    // If contract data fails or is not implemented, use mock data
-    console.log("Using mock data as fallback."); // Updated log message
-    setUsingMockData(true); // Ensure mock data status is set
-    setFeaturedMarkets([
-      {
-        id: "mock-1", // Use string IDs for consistency
-        title: "Will Bitcoin exceed $100,000 by end of 2024?",
-        odds: { yes: 65, no: 35 },
-        liquidity: 250000,
-        timeRemaining: "3 days remaining",
-        category: "Crypto",
-        isFeatured: true,
-        image: undefined,
-      },
-      {
-        id: "mock-2", // Use string IDs for consistency
-        title: "Will the Federal Reserve cut interest rates in Q3?",
-        odds: { yes: 42, no: 58 },
-        liquidity: "180000", // Use string for consistency
-        timeRemaining: "5 days remaining",
-        category: "Finance",
-        image: undefined,
-      },
-      {
-        id: "mock-3", // Use string IDs for consistency
-        title: "Will Apple release a new AR headset this year?",
-        odds: { yes: 78, no: 22 },
-        liquidity: "320000", // Use string for consistency
-        timeRemaining: "12 hours remaining",
-        category: "Technology",
-        image: undefined,
-      },
-      {
-        id: "mock-4", // Use string IDs for consistency
-        title:
-          "Will the Democratic candidate win the 2024 US Presidential Election?",
-        odds: { yes: 52, no: 48 },
-        liquidity: "500000", // Use string for consistency
-        timeRemaining: "4 months remaining",
-        category: "Politics",
-        image: undefined,
-      },
-      {
-        id: "mock-5", // Use string IDs for consistency
-        title: "Will Real Madrid win the Champions League?",
-        odds: { yes: 30, no: 70 },
-        liquidity: "150000", // Use string for consistency
-        timeRemaining: "2 months remaining",
-        category: "Sports",
-        image: undefined,
-      },
-      {
-        id: "mock-6", // Use string IDs for consistency
-        title: "Will Ethereum price be above $5,000 by July 2024?",
-        odds: { yes: 45, no: 55 },
-        liquidity: "280000", // Use string for consistency
-        timeRemaining: "1 month remaining",
-        category: "Crypto",
-        image: undefined,
-      },
-    ]);
-    // } catch (error) {
-    //   console.error("Error in loadFallbackData:", error);
-    // }
-  };
-
-  // Initial data load
   useEffect(() => {
-    const initialLoad = async () => {
-      setIsLoading(true);
-      await Promise.all([loadMarketData(), loadCategories()]);
-    };
-
-    initialLoad();
+    loadMarketData();
   }, []);
 
-  // Set up polling to refresh data periodically
   useEffect(() => {
-    // Initial load done in separate useEffect to avoid dependencies issues
-
-    // Get refresh interval from environment variable or default to 2 minutes
     const refreshInterval = parseInt(
       process.env.NEXT_PUBLIC_DATA_REFRESH_INTERVAL || "120000",
       10
     );
-
-    // Set up polling interval
     const intervalId = setInterval(() => {
-      console.log(
-        `Polling for fresh market data (every ${refreshInterval / 1000}s)...`
-      );
+      console.log(`Homepage: Polling for fresh data...`);
       loadMarketData();
     }, refreshInterval);
-
-    // Clean up on unmount
-    return () => {
-      clearInterval(intervalId);
-    };
+    return () => clearInterval(intervalId);
   }, []);
+
+  const { categories, filteredMarkets, totalPages, paginatedMarkets } =
+    useMemo(() => {
+      const categorizedMarkets = allMarkets.map((market) => ({
+        ...market,
+        derivedCategory: categorizeMarket(market),
+      }));
+      const uniqueCategories = [
+        "All",
+        ...Array.from(
+          new Set(categorizedMarkets.map((m) => m.derivedCategory))
+        ).sort(),
+      ];
+
+      let currentFilteredMarkets = categorizedMarkets.filter((market) => {
+        const matchesCategory =
+          selectedCategory === "All" ||
+          market.derivedCategory === selectedCategory;
+        const matchesSearch = searchTerm
+          ? market.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (market.slug?.toLowerCase().includes(searchTerm.toLowerCase()) ??
+              false)
+          : true;
+        return matchesCategory && matchesSearch;
+      });
+
+      const now = new Date().getTime();
+      currentFilteredMarkets.sort((a, b) => {
+        switch (sortOrder) {
+          case "liquidity":
+            return (b.liquidityClob ?? 0) - (a.liquidityClob ?? 0);
+          case "participants":
+            const participantsA = Math.floor((a.liquidityClob ?? 0) / 200);
+            const participantsB = Math.floor((b.liquidityClob ?? 0) / 200);
+            return participantsB - participantsA;
+          case "timeRemaining":
+          default:
+            const timeA = a.endDate ? new Date(a.endDate).getTime() : Infinity;
+            const timeB = b.endDate ? new Date(b.endDate).getTime() : Infinity;
+            const diffA = timeA - now;
+            const diffB = timeB - now;
+            if (diffA <= 0 && diffB <= 0) return timeB - timeA;
+            if (diffA <= 0) return 1;
+            if (diffB <= 0) return -1;
+            return diffA - diffB;
+        }
+      });
+
+      const calculatedTotalPages = Math.ceil(
+        currentFilteredMarkets.length / ITEMS_PER_PAGE
+      );
+      const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+      const endIndex = startIndex + ITEMS_PER_PAGE;
+      const currentPaginatedMarkets = currentFilteredMarkets.slice(
+        startIndex,
+        endIndex
+      );
+
+      return {
+        categories: uniqueCategories,
+        filteredMarkets: currentFilteredMarkets,
+        totalPages: calculatedTotalPages,
+        paginatedMarkets: currentPaginatedMarkets,
+      };
+    }, [allMarkets, selectedCategory, searchTerm, currentPage, sortOrder]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategory, searchTerm, sortOrder]);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
 
   return (
     <RootLayout>
-      {/* Hero section with full-width aurora background */}
       <ProphitHero />
 
-      {/* Content sections with containers */}
-      <div className="bg-background">
-        {/* Featured Markets */}
-        <div className="container mx-auto px-4 py-16">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h2 className="text-2xl font-bold">Featured Markets</h2>
-              <div className="flex flex-col text-sm text-muted-foreground">
-                {lastUpdated && (
-                  <span>Last updated: {lastUpdated.toLocaleTimeString()}</span>
-                )}
-                <span>
-                  Data source:{" "}
-                  {usingMockData ? "Demonstration data" : "Gamma API"}
-                </span>
-              </div>
-            </div>
-            <Link href="/markets" className="text-primary hover:underline">
-              View All
-            </Link>
+      <div
+        className="container mx-auto px-4 py-12 md:py-16"
+        id="market-browser"
+      >
+        <div className="mb-8 space-y-4">
+          <div className="relative max-w-xl mx-auto">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search markets..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 rounded-md border border-border bg-background focus:ring-2 focus:ring-primary focus:border-transparent"
+              aria-label="Search markets"
+            />
           </div>
 
+          <div className="flex flex-wrap justify-center gap-2">
+            {!isLoading && categories.length > 1 ? (
+              categories.map((category) => (
+                <Button
+                  key={category}
+                  variant={
+                    selectedCategory === category ? "default" : "outline"
+                  }
+                  size="sm"
+                  onClick={() => setSelectedCategory(category)}
+                  className={`transition-colors duration-150 ${
+                    selectedCategory === category
+                      ? "font-semibold"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {category}
+                </Button>
+              ))
+            ) : isLoading ? (
+              <>
+                <Skeleton className="h-8 w-20 rounded-md" />
+                <Skeleton className="h-8 w-24 rounded-md" />
+                <Skeleton className="h-8 w-16 rounded-md" />
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No categories found.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex justify-center mb-6">
+          <ToggleGroup
+            type="single"
+            value={sortOrder}
+            onValueChange={(value: string) => {
+              if (value) setSortOrder(value);
+            }}
+            aria-label="Sort markets by"
+            className="bg-muted p-1 rounded-md"
+          >
+            <ToggleGroupItem
+              value="timeRemaining"
+              aria-label="Sort by time remaining"
+              className="px-3 py-1.5 text-xs sm:text-sm data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md"
+            >
+              Ending Soon
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="liquidity"
+              aria-label="Sort by liquidity"
+              className="px-3 py-1.5 text-xs sm:text-sm data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md"
+            >
+              Liquidity
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="participants"
+              aria-label="Sort by participants"
+              className="px-3 py-1.5 text-xs sm:text-sm data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md"
+            >
+              Traders
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
+
+        <div className="min-h-[400px]">
           {isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
+              {Array.from({ length: 9 }).map((_, index) => (
                 <div
-                  key={i}
-                  className="w-full h-64 rounded-lg bg-muted animate-pulse"
-                ></div>
+                  key={index}
+                  className="bg-card rounded-lg border border-border shadow-sm p-5 animate-pulse h-64"
+                >
+                  <div className="h-4 bg-muted rounded w-1/3 mb-3"></div>
+                  <div className="h-6 bg-muted rounded w-full mb-4"></div>
+                  <div className="h-4 bg-muted rounded w-1/2 mb-6"></div>
+                  <div className="flex justify-between mb-2">
+                    <div className="h-5 bg-muted rounded w-1/4"></div>
+                    <div className="h-5 bg-muted rounded w-1/4"></div>
+                  </div>
+                  <div className="h-2.5 bg-muted rounded-full mb-6"></div>
+                  <div className="flex justify-between items-center">
+                    <div className="h-4 bg-muted rounded w-1/3"></div>
+                    <div className="h-4 bg-muted rounded w-1/3"></div>
+                  </div>
+                </div>
               ))}
             </div>
-          ) : (
+          ) : error ? (
+            <div className="text-center py-10 text-red-500">Error: {error}</div>
+          ) : paginatedMarkets.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {featuredMarkets.map((market) => (
+              {paginatedMarkets.map((market) => (
                 <PredictionMarketCard
                   key={market.id}
                   id={market.id}
-                  title={market.title}
-                  odds={market.odds}
-                  liquidity={market.liquidity}
-                  timeRemaining={market.timeRemaining}
-                  category={market.category || "Other"}
+                  title={market.question ?? "N/A"}
+                  odds={{
+                    yes: Math.round((market.bestAsk ?? 0.5) * 100),
+                    no: 100 - Math.round((market.bestAsk ?? 0.5) * 100),
+                  }}
+                  liquidity={market.liquidityClob?.toFixed(2) ?? "0"}
+                  timeRemaining={
+                    market.endDate ? formatTimeRemaining(market.endDate) : "N/A"
+                  }
+                  category={market.derivedCategory || "Other"}
                   image={market.image}
-                  isFeatured={market.isFeatured}
                 />
               ))}
-              {featuredMarkets.length === 0 && !isLoading && (
-                <div className="col-span-3 text-center py-10">
-                  <p className="text-muted-foreground">
-                    No markets available at the moment. Please check again
-                    later.
-                  </p>
-                </div>
+            </div>
+          ) : (
+            <div className="text-center py-16 text-muted-foreground">
+              <p className="text-xl font-medium">No markets found</p>
+              {(selectedCategory !== "All" || searchTerm) && (
+                <p>Try adjusting your filters.</p>
               )}
             </div>
           )}
         </div>
 
-        {/* Categories */}
-        <div className="container mx-auto px-4 pb-16">
-          <h2 className="text-2xl font-bold mb-6">Browse by Category</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {categories.map((category) => (
-              <Link
-                key={category}
-                href={`/markets?category=${category.toLowerCase()}`}
-                className="flex flex-col items-center justify-center p-6 rounded-lg border border-border bg-background hover:bg-muted transition-colors text-center"
-              >
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                  <span className="text-xl text-primary">
-                    {category.charAt(0)}
+        {!isLoading && !error && totalPages > 1 && (
+          <div className="mt-12 flex justify-center items-center space-x-1 sm:space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-2 sm:px-3"
+            >
+              Previous
+            </Button>
+            {getPaginationNumbers(currentPage, totalPages).map(
+              (pageNumber, index) =>
+                typeof pageNumber === "number" ? (
+                  <Button
+                    key={`page-${pageNumber}`}
+                    variant={currentPage === pageNumber ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handlePageChange(pageNumber)}
+                    className="w-9 h-9 px-0 sm:w-10 sm:h-10"
+                  >
+                    {pageNumber}
+                  </Button>
+                ) : (
+                  <span
+                    key={`dots-${index}`}
+                    className="px-1 sm:px-2 text-muted-foreground"
+                  >
+                    ...
                   </span>
-                </div>
-                <span className="font-medium">{category}</span>
-                <span className="text-sm text-muted-foreground mt-1">
-                  {/* This would ideally be fetched from the API */}
-                  {Math.floor(Math.random() * 20) + 5} markets
-                </span>
-              </Link>
-            ))}
+                )
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-2 sm:px-3"
+            >
+              Next
+            </Button>
           </div>
-        </div>
+        )}
       </div>
     </RootLayout>
   );

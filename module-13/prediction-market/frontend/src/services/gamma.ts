@@ -2,8 +2,8 @@ import { PolymarketMarket } from '@/types/polymarket';
 
 // Use the proxied path via next.config.js rewrites
 const GAMMA_POLYMARKET_API_ENDPOINT = '/api/gamma/markets';
-const MAX_MARKETS_TO_FETCH = 200; // Target number of markets
-const LIMIT_PER_PAGE = 50; // Max markets per API request (adjust based on API capabilities)
+const MAX_MARKETS_TO_FETCH = 500; // Changed from 1000 to 500
+const LIMIT_PER_PAGE = 100; // Max markets per API request (adjust based on API capabilities)
 
 /**
  * Fetches up to MAX_MARKETS_TO_FETCH active, binary Polymarket markets

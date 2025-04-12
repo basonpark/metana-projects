@@ -1,100 +1,59 @@
 "use client";
 
-// import { ConnectButton } from '@rainbow-me/rainbowkit'; // <--- Comment out this import
 import { Button } from "@/components/ui/button";
-import { Wallet } from "lucide-react"; // Import Wallet icon
+import { Wallet, LogOut } from "lucide-react"; // Import icons
+import { useAccount, useConnect, useDisconnect } from "wagmi";
+// Correct import path for newer Wagmi/Viem versions might just be 'wagmi/connectors'
+// If this fails, you might need to install `@wagmi/connectors` separately and import from there.
+import { injected } from "wagmi/connectors"; // Use the connector directly
 
 export function WalletConnect() {
-  // Return a simple placeholder button since the real functionality is commented out
+  // isConnecting from useAccount is usually for auto-reconnect attempts on load
+  const { address, isConnected, isConnecting: isReconnecting } = useAccount();
+  // isPending from useConnect is for the active connection attempt triggered by the user
+  const { connect, connectors, error, isPending } = useConnect();
+  const { disconnect } = useDisconnect();
+
+  // Function to format address (e.g., 0x123...abc)
+  const formatAddress = (addr: string | undefined) => {
+    if (!addr) return "";
+    return `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
+  };
+
+  const handleConnect = () => {
+    // Call connect with the desired connector instance
+    connect({ connector: injected() });
+  };
+
+  if (isConnected) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium hidden sm:inline">
+          {formatAddress(address)}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => disconnect()}
+          title="Disconnect Wallet"
+        >
+          <LogOut className="h-4 w-4 sm:mr-2" />
+          <span className="hidden sm:inline">Disconnect</span>
+        </Button>
+      </div>
+    );
+  }
+
   return (
-    <Button disabled>
-      {" "}
-      {/* Disable the button as it won't work */}
+    <Button
+      onClick={handleConnect} // Use the handler function
+      disabled={isPending} // Disable only during active connection attempt
+      aria-label="Connect Wallet"
+    >
       <Wallet className="h-4 w-4 mr-2" />
-      Connect Wallet
+      {isPending ? "Connecting..." : "Connect Wallet"}
+      {/* Optional: More specific error display if needed */}
+      {error && <span className="ml-2 text-xs text-red-500">(Error)</span>}
     </Button>
   );
-
-  /* // <--- Start comment block for the original RainbowKit code
-  return (
-    <ConnectButton.Custom>
-      {({ account, chain, openAccountModal, openChainModal, openConnectModal, authenticationStatus, mounted }) => {
-        const ready = mounted && authenticationStatus !== 'loading';
-        const connected = ready && account && chain && (!authenticationStatus || authenticationStatus === 'authenticated');
-
-        return (
-          <div
-            {...(!ready && {
-              'aria-hidden': true,
-              'style': {
-                opacity: 0,
-                pointerEvents: 'none',
-                userSelect: 'none',
-              },
-            })}
-          >
-            {(() => {
-              if (!connected) {
-                return (
-                  <Button onClick={openConnectModal} type="button">
-                    Connect Wallet
-                  </Button>
-                );
-              }
-
-              if (chain.unsupported) {
-                return (
-                  <Button onClick={openChainModal} type="button" variant="destructive">
-                    Wrong network
-                  </Button>
-                );
-              }
-
-              return (
-                <div style={{ display: 'flex', gap: 12 }}>
-                  <Button
-                    onClick={openChainModal}
-                    style={{ display: 'flex', alignItems: 'center' }}
-                    type="button"
-                    variant="outline"
-                  >
-                    {chain.hasIcon && (
-                      <div
-                        style={{
-                          background: chain.iconBackground,
-                          width: 16, // Smaller icon
-                          height: 16, // Smaller icon
-                          borderRadius: 999,
-                          overflow: 'hidden',
-                          marginRight: 6, // Spacing
-                        }}
-                      >
-                        {chain.iconUrl && (
-                          <img
-                            alt={chain.name ?? 'Chain icon'}
-                            src={chain.iconUrl}
-                            style={{ width: 16, height: 16 }} // Smaller icon
-                          />
-                        )}
-                      </div>
-                    )}
-                    {chain.name}
-                  </Button>
-                  <Button onClick={openAccountModal} type="button" variant="outline">
-                    {account.displayName}
-                    {
-                      account.displayBalance
-                        ? ` (${account.displayBalance})`
-                        : ''
-                    }
-                  </Button>
-                </div>
-              );
-            })()}
-          </div>
-        );
-      }}
-    </ConnectButton.Custom>
-  );
-  */ // <--- End comment block
 }

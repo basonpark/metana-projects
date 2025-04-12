@@ -10,8 +10,58 @@ import { formatTimeRemaining, categorizeMarket } from "@/lib/utils";
 import { PolymarketMarket } from "@/types/polymarket";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
-const ITEMS_PER_PAGE = 50;
+const ITEMS_PER_PAGE = 30;
+
+const getPaginationNumbers = (
+  currentPage: number,
+  totalPages: number,
+  siblings = 1
+): (number | "...")[] => {
+  const totalNumbers = siblings * 2 + 3; // siblings on each side + first + last + current
+  const totalBlocks = totalNumbers + 2; // totalNumbers + 2 ellipses
+
+  if (totalPages <= totalBlocks) {
+    // No need for ellipses if total pages is small
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+
+  const leftSiblingIndex = Math.max(currentPage - siblings, 1);
+  const rightSiblingIndex = Math.min(currentPage + siblings, totalPages);
+
+  const shouldShowLeftDots = leftSiblingIndex > 2;
+  const shouldShowRightDots = rightSiblingIndex < totalPages - 1;
+
+  const firstPageIndex = 1;
+  const lastPageIndex = totalPages;
+
+  if (!shouldShowLeftDots && shouldShowRightDots) {
+    let leftItemCount = 3 + 2 * siblings;
+    let leftRange = Array.from({ length: leftItemCount }, (_, i) => i + 1);
+    return [...leftRange, "...", lastPageIndex];
+  }
+
+  if (shouldShowLeftDots && !shouldShowRightDots) {
+    let rightItemCount = 3 + 2 * siblings;
+    let rightRange = Array.from(
+      { length: rightItemCount },
+      (_, i) => totalPages - rightItemCount + 1 + i
+    );
+    return [firstPageIndex, "...", ...rightRange];
+  }
+
+  if (shouldShowLeftDots && shouldShowRightDots) {
+    let middleRange = Array.from(
+      { length: rightSiblingIndex - leftSiblingIndex + 1 },
+      (_, i) => leftSiblingIndex + i
+    );
+    return [firstPageIndex, "...", ...middleRange, "...", lastPageIndex];
+  }
+
+  // Fallback (should not happen with logic above, but good practice)
+  return Array.from({ length: totalPages }, (_, i) => i + 1);
+};
 
 export default function MarketsPage() {
   const [allMarkets, setAllMarkets] = useState<PolymarketMarket[]>([]);
@@ -20,6 +70,7 @@ export default function MarketsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortOrder, setSortOrder] = useState<string>("timeRemaining");
 
   useEffect(() => {
     const loadMarkets = async () => {
@@ -59,7 +110,7 @@ export default function MarketsPage() {
         ).sort(),
       ];
 
-      const currentFilteredMarkets = categorizedMarkets.filter((market) => {
+      let currentFilteredMarkets = categorizedMarkets.filter((market) => {
         const matchesCategory =
           selectedCategory === "All" ||
           market.derivedCategory === selectedCategory;
@@ -69,6 +120,28 @@ export default function MarketsPage() {
               false)
           : true;
         return matchesCategory && matchesSearch;
+      });
+
+      const now = new Date().getTime();
+      currentFilteredMarkets.sort((a, b) => {
+        switch (sortOrder) {
+          case "liquidity":
+            return (b.liquidityClob ?? 0) - (a.liquidityClob ?? 0);
+          case "participants":
+            const participantsA = Math.floor((a.liquidityClob ?? 0) / 200);
+            const participantsB = Math.floor((b.liquidityClob ?? 0) / 200);
+            return participantsB - participantsA;
+          case "timeRemaining":
+          default:
+            const timeA = a.endDate ? new Date(a.endDate).getTime() : Infinity;
+            const timeB = b.endDate ? new Date(b.endDate).getTime() : Infinity;
+            const diffA = timeA - now;
+            const diffB = timeB - now;
+            if (diffA <= 0 && diffB <= 0) return timeB - timeA;
+            if (diffA <= 0) return 1;
+            if (diffB <= 0) return -1;
+            return diffA - diffB;
+        }
       });
 
       const calculatedTotalPages = Math.ceil(
@@ -87,11 +160,44 @@ export default function MarketsPage() {
         totalPages: calculatedTotalPages,
         paginatedMarkets: currentPaginatedMarkets,
       };
-    }, [allMarkets, selectedCategory, searchTerm, currentPage]);
+    }, [allMarkets, selectedCategory, searchTerm, currentPage, sortOrder]);
+
+  // Add console logs for debugging
+  useEffect(() => {
+    console.log("[Debug] State Update:", {
+      isLoading,
+      error,
+      selectedCategory,
+      searchTerm,
+      currentPage,
+      sortOrder,
+      totalPages,
+      allMarketsCount: allMarkets.length,
+      filteredMarketsCount: filteredMarkets.length,
+      paginatedMarketsCount: paginatedMarkets.length,
+    });
+  }, [
+    isLoading,
+    error,
+    selectedCategory,
+    searchTerm,
+    currentPage,
+    sortOrder,
+    totalPages,
+    allMarkets.length,
+    filteredMarkets.length,
+    paginatedMarkets.length,
+  ]);
+
+  // --- DEBUG: Log before returning JSX ---
+  console.log("[Debug] Rendering Toggle Group section...");
+  console.log(
+    `[Debug] Rendering Pagination Controls: currentPage=${currentPage}, totalPages=${totalPages}`
+  );
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCategory, searchTerm]);
+  }, [selectedCategory, searchTerm, sortOrder]);
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -117,7 +223,7 @@ export default function MarketsPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Search by question or slug..."
+              placeholder="Search by question..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 rounded-md border border-border bg-background focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -146,6 +252,40 @@ export default function MarketsPage() {
               ))}
             </div>
           )}
+        </div>
+
+        <div className="flex justify-center mb-6">
+          <ToggleGroup
+            type="single"
+            value={sortOrder}
+            onValueChange={(value: string) => {
+              if (value) setSortOrder(value);
+            }}
+            aria-label="Sort markets by"
+            className="bg-muted p-1 rounded-md"
+          >
+            <ToggleGroupItem
+              value="timeRemaining"
+              aria-label="Sort by time remaining"
+              className="px-3 py-1.5 data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md"
+            >
+              Ending Soon
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="liquidity"
+              aria-label="Sort by liquidity"
+              className="px-3 py-1.5 data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md"
+            >
+              Liquidity
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="participants"
+              aria-label="Sort by participants"
+              className="px-3 py-1.5 data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md"
+            >
+              Traders
+            </ToggleGroupItem>
+          </ToggleGroup>
         </div>
 
         <div>
@@ -177,25 +317,35 @@ export default function MarketsPage() {
               <p>{error}</p>
             </div>
           ) : paginatedMarkets.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {paginatedMarkets.map((market) => (
-                <PredictionMarketCard
-                  key={market.id}
-                  id={market.id}
-                  title={market.question ?? "Market Question Unavailable"}
-                  odds={{
-                    yes: Math.round((market.bestAsk ?? 0.5) * 100),
-                    no: 100 - Math.round((market.bestAsk ?? 0.5) * 100),
-                  }}
-                  liquidity={market.liquidityClob?.toFixed(2) ?? "0"}
-                  timeRemaining={
-                    market.endDate ? formatTimeRemaining(market.endDate) : "N/A"
-                  }
-                  category={market.derivedCategory || "Other"}
-                  image={market.image}
-                />
-              ))}
-            </div>
+            // --- DEBUG: Confirm mapping correct array ---
+            (() => {
+              console.log(
+                `[Debug] Rendering ${paginatedMarkets.length} paginated market cards...`
+              );
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {paginatedMarkets.map((market) => (
+                    <PredictionMarketCard
+                      key={market.id}
+                      id={market.id}
+                      title={market.question ?? "Market Question Unavailable"}
+                      odds={{
+                        yes: Math.round((market.bestAsk ?? 0.5) * 100),
+                        no: 100 - Math.round((market.bestAsk ?? 0.5) * 100),
+                      }}
+                      liquidity={market.liquidityClob?.toFixed(2) ?? "0"}
+                      timeRemaining={
+                        market.endDate
+                          ? formatTimeRemaining(market.endDate)
+                          : "N/A"
+                      }
+                      category={market.derivedCategory || "Other"}
+                      image={market.image}
+                    />
+                  ))}
+                </div>
+              );
+            })()
           ) : (
             <div className="col-span-full text-center py-16 text-muted-foreground">
               <p className="text-xl font-medium">No markets found</p>
@@ -207,23 +357,43 @@ export default function MarketsPage() {
         </div>
 
         {!isLoading && !error && totalPages > 1 && (
-          <div className="mt-12 flex justify-center items-center space-x-2">
+          <div className="mt-12 flex justify-center items-center space-x-1 sm:space-x-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
+              className="px-2 sm:px-3"
             >
               Previous
             </Button>
-            <span className="text-sm text-muted-foreground">
-              Page {currentPage} of {totalPages}
-            </span>
+            {getPaginationNumbers(currentPage, totalPages).map(
+              (pageNumber, index) =>
+                typeof pageNumber === "number" ? (
+                  <Button
+                    key={`page-${pageNumber}`}
+                    variant={currentPage === pageNumber ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handlePageChange(pageNumber)}
+                    className="w-9 h-9 px-0 sm:w-10 sm:h-10"
+                  >
+                    {pageNumber}
+                  </Button>
+                ) : (
+                  <span
+                    key={`dots-${index}`}
+                    className="px-1 sm:px-2 text-muted-foreground"
+                  >
+                    ...
+                  </span>
+                )
+            )}
             <Button
               variant="outline"
               size="sm"
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
+              className="px-2 sm:px-3"
             >
               Next
             </Button>
