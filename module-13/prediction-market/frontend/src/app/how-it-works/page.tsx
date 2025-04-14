@@ -1,6 +1,7 @@
 "use client";
 
 import { RootLayout } from "@/components/layout/RootLayout";
+import { HowItWorksAmm } from "@/components/HowItWorksAmm";
 
 export default function HowItWorksPage() {
   return (
@@ -262,193 +263,197 @@ export default function HowItWorksPage() {
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Important Risks Section */}
-              <div className="col-span-1 lg:col-span-2 bg-destructive/5 rounded-xl p-8 shadow-md relative overflow-hidden border border-destructive/20 hover:shadow-lg transition-all duration-300">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-destructive/5 rounded-full -mt-12 -mr-12 z-0"></div>
-                <div className="relative z-10">
-                  <h3 className="text-2xl font-bold mb-3 flex items-center text-destructive">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="mr-2"
-                    >
-                      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
-                      <line x1="12" y1="9" x2="12" y2="13"></line>
-                      <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                    </svg>
-                    Important Risks to Consider
-                  </h3>
-                  <p className="text-base text-muted-foreground mb-6">
-                    While prediction markets offer exciting opportunities, it's
-                    crucial to understand and carefully consider these risks
-                    before participating. None of this information constitutes
-                    financial advice - always do your own research and never
-                    invest more than you can afford to lose.
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div className="bg-background/50 p-4 rounded-lg hover:shadow-md transition-all duration-300 hover:bg-background/80 group border border-border/50">
-                      <h4 className="font-semibold mb-2 flex items-center text-base group-hover:text-destructive">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="mr-2"
-                        >
-                          <circle cx="12" cy="12" r="8"></circle>
-                          <line x1="12" y1="8" x2="12" y2="12"></line>
-                          <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                        </svg>
-                        Financial Risks
-                      </h4>
-                      <ul className="text-sm text-muted-foreground space-y-2">
-                        <li className="flex items-start">
-                          <span className="text-destructive mr-2">•</span>
-                          <span>
-                            Potential for complete loss of invested capital
-                          </span>
-                        </li>
-                        <li className="flex items-start">
-                          <span className="text-destructive mr-2">•</span>
-                          <span>
-                            Binary outcomes - positions are all-or-nothing
-                          </span>
-                        </li>
-                        <li className="flex items-start">
-                          <span className="text-destructive mr-2">•</span>
-                          <span>
-                            Market volatility can lead to unexpected losses
-                          </span>
-                        </li>
-                      </ul>
-                    </div>
-                    <div className="bg-background/50 p-4 rounded-lg hover:shadow-md transition-all duration-300 hover:bg-background/80 group border border-border/50">
-                      <h4 className="font-semibold mb-2 flex items-center text-base group-hover:text-destructive">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="mr-2"
-                        >
-                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"></path>
-                        </svg>
-                        Market Risks
-                      </h4>
-                      <ul className="text-sm text-muted-foreground space-y-2">
-                        <li className="flex items-start">
-                          <span className="text-destructive mr-2">•</span>
-                          <span>Price manipulation by large traders</span>
-                        </li>
-                        <li className="flex items-start">
-                          <span className="text-destructive mr-2">•</span>
-                          <span>
-                            Limited liquidity affecting entry/exit prices
-                          </span>
-                        </li>
-                        <li className="flex items-start">
-                          <span className="text-destructive mr-2">•</span>
-                          <span>Potential for misinformation campaigns</span>
-                        </li>
-                      </ul>
-                    </div>
-                    <div className="bg-background/50 p-4 rounded-lg hover:shadow-md transition-all duration-300 hover:bg-background/80 group border border-border/50">
-                      <h4 className="font-semibold mb-2 flex items-center text-base group-hover:text-destructive">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="mr-2"
-                        >
-                          <rect
-                            width="18"
-                            height="18"
-                            x="3"
-                            y="3"
-                            rx="2"
-                            ry="2"
-                          ></rect>
-                          <path d="M7 7h10"></path>
-                          <path d="M7 12h10"></path>
-                          <path d="M7 17h10"></path>
-                        </svg>
-                        Technical Risks
-                      </h4>
-                      <ul className="text-sm text-muted-foreground space-y-2">
-                        <li className="flex items-start">
-                          <span className="text-destructive mr-2">•</span>
-                          <span>Smart contract vulnerabilities</span>
-                        </li>
-                        <li className="flex items-start">
-                          <span className="text-destructive mr-2">•</span>
-                          <span>Oracle failures or delays in resolution</span>
-                        </li>
-                        <li className="flex items-start">
-                          <span className="text-destructive mr-2">•</span>
-                          <span>Network congestion affecting trades</span>
-                        </li>
-                      </ul>
-                    </div>
-                    <div className="bg-background/50 p-4 rounded-lg hover:shadow-md transition-all duration-300 hover:bg-background/80 group border border-border/50">
-                      <h4 className="font-semibold mb-2 flex items-center text-base group-hover:text-destructive">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="mr-2"
-                        >
-                          <path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"></path>
-                          <path d="m18 2 4 4-4 4"></path>
-                        </svg>
-                        Regulatory & Legal Risks
-                      </h4>
-                      <ul className="text-sm text-muted-foreground space-y-2">
-                        <li className="flex items-start">
-                          <span className="text-destructive mr-2">•</span>
-                          <span>Evolving regulatory landscape</span>
-                        </li>
-                        <li className="flex items-start">
-                          <span className="text-destructive mr-2">•</span>
-                          <span>Jurisdictional restrictions</span>
-                        </li>
-                        <li className="flex items-start">
-                          <span className="text-destructive mr-2">•</span>
-                          <span>
-                            Tax implications and reporting requirements
-                          </span>
-                        </li>
-                      </ul>
-                    </div>
+            {/* --- Move AMM Explanation Component Here --- */}
+            <div className="mb-16">
+              <HowItWorksAmm />
+            </div>
+            {/* --- End AMM Explanation Component --- */}
+
+            {/* Important Risks Section */}
+            <div className="col-span-1 lg:col-span-2 bg-destructive/5 rounded-xl p-8 shadow-md relative overflow-hidden border border-destructive/20 hover:shadow-lg transition-all duration-300">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-destructive/5 rounded-full -mt-12 -mr-12 z-0"></div>
+              <div className="relative z-10">
+                <h3 className="text-2xl font-bold mb-3 flex items-center text-destructive">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="mr-2"
+                  >
+                    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                  </svg>
+                  Important Risks to Consider
+                </h3>
+                <p className="text-base text-muted-foreground mb-6">
+                  While prediction markets offer exciting opportunities, it's
+                  crucial to understand and carefully consider these risks
+                  before participating. None of this information constitutes
+                  financial advice - always do your own research and never
+                  invest more than you can afford to lose.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  <div className="bg-background/50 p-4 rounded-lg hover:shadow-md transition-all duration-300 hover:bg-background/80 group border border-border/50">
+                    <h4 className="font-semibold mb-2 flex items-center text-base group-hover:text-destructive">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="mr-2"
+                      >
+                        <circle cx="12" cy="12" r="8"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                      </svg>
+                      Financial Risks
+                    </h4>
+                    <ul className="text-sm text-muted-foreground space-y-2">
+                      <li className="flex items-start">
+                        <span className="text-destructive mr-2">•</span>
+                        <span>
+                          Potential for complete loss of invested capital
+                        </span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="text-destructive mr-2">•</span>
+                        <span>
+                          Binary outcomes - positions are all-or-nothing
+                        </span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="text-destructive mr-2">•</span>
+                        <span>
+                          Market volatility can lead to unexpected losses
+                        </span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div className="bg-background/50 p-4 rounded-lg hover:shadow-md transition-all duration-300 hover:bg-background/80 group border border-border/50">
+                    <h4 className="font-semibold mb-2 flex items-center text-base group-hover:text-destructive">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="mr-2"
+                      >
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"></path>
+                      </svg>
+                      Market Risks
+                    </h4>
+                    <ul className="text-sm text-muted-foreground space-y-2">
+                      <li className="flex items-start">
+                        <span className="text-destructive mr-2">•</span>
+                        <span>Price manipulation by large traders</span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="text-destructive mr-2">•</span>
+                        <span>
+                          Limited liquidity affecting entry/exit prices
+                        </span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="text-destructive mr-2">•</span>
+                        <span>Potential for misinformation campaigns</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div className="bg-background/50 p-4 rounded-lg hover:shadow-md transition-all duration-300 hover:bg-background/80 group border border-border/50">
+                    <h4 className="font-semibold mb-2 flex items-center text-base group-hover:text-destructive">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="mr-2"
+                      >
+                        <rect
+                          width="18"
+                          height="18"
+                          x="3"
+                          y="3"
+                          rx="2"
+                          ry="2"
+                        ></rect>
+                        <path d="M7 7h10"></path>
+                        <path d="M7 12h10"></path>
+                        <path d="M7 17h10"></path>
+                      </svg>
+                      Technical Risks
+                    </h4>
+                    <ul className="text-sm text-muted-foreground space-y-2">
+                      <li className="flex items-start">
+                        <span className="text-destructive mr-2">•</span>
+                        <span>Smart contract vulnerabilities</span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="text-destructive mr-2">•</span>
+                        <span>Oracle failures or delays in resolution</span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="text-destructive mr-2">•</span>
+                        <span>Network congestion affecting trades</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div className="bg-background/50 p-4 rounded-lg hover:shadow-md transition-all duration-300 hover:bg-background/80 group border border-border/50">
+                    <h4 className="font-semibold mb-2 flex items-center text-base group-hover:text-destructive">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="mr-2"
+                      >
+                        <path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"></path>
+                        <path d="m18 2 4 4-4 4"></path>
+                      </svg>
+                      Regulatory & Legal Risks
+                    </h4>
+                    <ul className="text-sm text-muted-foreground space-y-2">
+                      <li className="flex items-start">
+                        <span className="text-destructive mr-2">•</span>
+                        <span>Evolving regulatory landscape</span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="text-destructive mr-2">•</span>
+                        <span>Jurisdictional restrictions</span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="text-destructive mr-2">•</span>
+                        <span>Tax implications and reporting requirements</span>
+                      </li>
+                    </ul>
                   </div>
                 </div>
               </div>
