@@ -460,8 +460,8 @@ export default function HowItWorksPage() {
             </div>
 
             {/* Real-world applications */}
-            <div className="rounded-xl bg-gradient-to-r from-primary/10 via-background to-primary/10 p-8 shadow-lg">
-              <h3 className="text-2xl font-bold mb-6 text-center">
+            <div className="rounded-xl bg-gradient-to-r from-primary/10 via-background to-primary/10 p-8 mt-18 shadow-lg">
+              <h3 className="text-2xl font-bold mt-4 mb-6 text-center">
                 Real-World Applications
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
