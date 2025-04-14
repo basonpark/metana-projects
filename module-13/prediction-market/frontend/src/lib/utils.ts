@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { PolymarketMarket } from "@/types/polymarket"
+import { ethers } from "ethers" // Import ethers for formatting
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -74,3 +75,50 @@ export const categorizeMarket = (market: PolymarketMarket): string => {
   // Default category if no keywords match
   return 'Other';
 };
+
+/**
+ * Formats a BigInt value (representing wei) into a short ETH string.
+ * @param value - The BigInt value in wei.
+ * @param decimals - Number of decimal places to show (default: 4).
+ * @returns A string like "1.2345 ETH".
+ */
+export function formatEtherShort(value: bigint | undefined, decimals: number = 4): string {
+  if (value === undefined) {
+    return "0.0".padEnd(decimals + 2, '0') + " ETH";
+  }
+  try {
+    const formatted = ethers.formatUnits(value, 18);
+    // Use regex to truncate decimals without rounding
+    const match = formatted.match(`^-?\d*\.?\d{0,${decimals}}`);
+    const truncated = match ? match[0] : formatted; // Fallback if regex fails
+    // Ensure there's a decimal part if needed
+    const parts = truncated.split('.');
+    const integerPart = parts[0];
+    const decimalPart = (parts[1] || '').padEnd(decimals, '0');
+    return `${integerPart}.${decimalPart} ETH`;
+  } catch (error) {
+    console.error("Error formatting ether value:", error);
+    return "Error ETH"; // Fallback on error
+  }
+}
+
+/**
+ * Formats a BigInt value (representing wei) into a shorter ETH string using formatEtherShort.
+ * @param value - The BigInt value in wei.
+ * @returns A string like "1.2345 ETH".
+ */
+export function formatBalance(value: bigint | undefined): string {
+  if (value === undefined) return "0.0000 ETH"; // Match formatEtherShort default
+  return formatEtherShort(value); // Reuse formatEtherShort
+}
+
+/**
+ * Formats a BigInt value (representing basis points) into a percentage string.
+ * @param feeBps - The BigInt value in basis points.
+ * @returns A string like "2.5%".
+ */
+export function formatFee(feeBps: bigint | undefined): string {
+  if (feeBps === undefined || feeBps < 0n) return "N/A";
+  // Basis points to percentage - convert bigint to Number for division
+  return `${Number(feeBps) / 100}%`;
+}

@@ -146,13 +146,15 @@ export default function CreateMarketPage() {
         fee: parseFloat(formState.fee) / 100, // Convert to decimal
       };
 
-      const result = await createMarket(marketParams);
+      const newMarketAddress = await createMarket(marketParams);
 
-      if (result && result.marketAddress) {
-        // Navigate to the new market
-        router.push(`/markets/${result.marketAddress}`);
+      if (newMarketAddress) {
+        // Navigate to the new market with type parameter
+        console.log(`Market created: ${newMarketAddress}, redirecting...`);
+        router.push(`/markets/${newMarketAddress}?type=prophit`);
       } else {
-        throw new Error("Failed to create market");
+        // Handle case where address is unexpectedly null/undefined
+        throw new Error("Failed to create market or retrieve address");
       }
     } catch (error) {
       console.error("Error creating market:", error);
