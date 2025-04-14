@@ -176,22 +176,26 @@ export const TradeInterface: React.FC<TradeInterfaceProps> = ({
 
   // --- Event Handlers ---
   const handleTrade = () => {
+    const contractMarketId = BigInt(marketId); // Convert hex string marketId to BigInt
+    const contractOutcomeIndex = outcome === Outcome.Yes ? 1n : 0n; // Map enum to contract index (1=Yes, 0=No)
+    const amountBigInt = amount ? ethers.parseUnits(amount, 18) : 0n;
+
     if (tradeMode === "buy") {
-      console.log("Attempting to buy shares...");
+      console.log(`Attempting to buy shares for market ${marketId}, outcome ${contractOutcomeIndex}, amount ${amount}`);
       writeContract({
         address: marketId,
         abi: PredictionMarketABI.abi,
         functionName: "buyShares",
-        args: [outcome],
-        value: amount ? ethers.parseUnits(amount, 18) : 0n,
+        args: [contractMarketId, contractOutcomeIndex, amountBigInt], // Pass marketId, outcomeIndex, and amount
+        // value: REMOVED - Pass amount via args
       });
     } else {
-      console.log("Attempting to sell shares...");
+      console.log(`Attempting to sell shares for market ${marketId}, outcome ${contractOutcomeIndex}, amount ${amount}`);
       writeContract({
         address: marketId,
         abi: PredictionMarketABI.abi,
         functionName: "sellShares",
-        args: [outcome, amount ? ethers.parseUnits(amount, 18) : 0n],
+        args: [contractMarketId, contractOutcomeIndex, amountBigInt], // Pass marketId, outcomeIndex, sharesToSell
       });
     }
   };
