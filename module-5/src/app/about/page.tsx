@@ -14,11 +14,7 @@ import { EtherlensLogo } from "@/components/Logo";
 import { useBlockData } from "@/hooks/use-block-data";
 import { BlockCountdown } from "@/components/block-countdown";
 import { tokens } from "@/lib/tokens";
-
-// Add this to the top of your file for custom styles
-const peachColor = "#FFCB9A";
-const peachLightColor = "#FFD9B5";
-const peachDarkColor = "#E5B78B";
+import Image from "next/image";
 
 export default function AboutPage() {
   const { blocks, isConnected } = useBlockData(tokens[0].address);
@@ -35,7 +31,7 @@ export default function AboutPage() {
       </div>
 
       {/* Navigation Bar (simplified version) */}
-      <nav className="sticky top-0 z-50 bg-slate-900/70 backdrop-blur-lg border-b border-slate-700/50 shadow-lg relative">
+      <nav className="top-0 z-50 bg-slate-900/70 backdrop-blur-lg border-b border-slate-700/50 shadow-lg relative">
         <div className="max-w-7xl mx-auto px-6 sm:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center space-x-8">
@@ -156,7 +152,7 @@ export default function AboutPage() {
               <div className="flex items-center mb-6">
                 <FireIcon className="h-8 w-8 text-[#FFCB9A] mr-3" />
                 <h2 className="text-2xl font-bold text-white">
-                  Ethereum Gas Fees & EIP-1559
+                  Ethereum Gas Fees &amp; EIP-1559
                 </h2>
               </div>
               <div className="bg-slate-800/80 rounded-xl p-6 border border-slate-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.56)]">
@@ -255,7 +251,7 @@ export default function AboutPage() {
               <div className="flex items-center mb-6">
                 <ChartBarIcon className="h-8 w-8 text-[#FFCB9A] mr-3" />
                 <h2 className="text-2xl font-bold text-white">
-                  Block Gas & Utilization
+                  Block Gas &amp; Utilization
                 </h2>
               </div>
               <div className="bg-slate-800/80 rounded-xl p-6 border border-slate-700/50 shadow-[0_8px_30px_rgb(0,0,0,0.56)]">
@@ -391,10 +387,12 @@ export default function AboutPage() {
                   <ul className="space-y-3">
                     <li className="flex items-center p-2 bg-slate-800/80 rounded">
                       <div className="w-8 h-8 mr-3 overflow-hidden rounded-full flex items-center justify-center">
-                        <img
+                        <Image
                           src="/usdc.png"
                           alt="USDC Logo"
                           className="w-full h-full object-cover"
+                          width={150}
+                          height={150}
                         />
                       </div>
                       <div>
@@ -406,10 +404,12 @@ export default function AboutPage() {
                     </li>
                     <li className="flex items-center p-2 bg-slate-800/80 rounded">
                       <div className="w-8 h-8 mr-3 overflow-hidden rounded-full flex items-center justify-center">
-                        <img
+                        <Image
                           src="/dai.png"
                           alt="DAI Logo"
                           className="w-full h-full object-cover"
+                          width={150}
+                          height={150}
                         />
                       </div>
                       <div>
@@ -421,10 +421,12 @@ export default function AboutPage() {
                     </li>
                     <li className="flex items-center p-2 bg-slate-800/80 rounded">
                       <div className="w-8 h-8 mr-3 overflow-hidden rounded-full flex items-center justify-center">
-                        <img
+                        <Image
                           src="/uniswap.png"
                           alt="UNI Logo"
                           className="w-full h-full object-cover"
+                          width={150}
+                          height={150}
                         />
                       </div>
                       <div>
