@@ -12,9 +12,10 @@ import "./ExternalAPIOracle.sol";
 /**
  * @title PredictionMarket
  * @dev A prediction market contract allowing users to bet on real-world events
- * using Chainlink Oracle for data verification and Chainlink Automation for settlement
+ * using an AMM for trading, Chainlink Oracle for data verification,
+ * and Chainlink Automation for settlement.
  */
-contract PredictionMarket is Ownable, AutomationCompatibleInterface {
+contract PredictionMarket is AutomationCompatibleInterface, ConfirmedOwner /*, ERC1155Holder */ {
     // Market status enum
     enum MarketStatus {
         Open,      // Market is open for bets
@@ -36,346 +37,657 @@ contract PredictionMarket is Ownable, AutomationCompatibleInterface {
     // Structure to represent a prediction market
     struct Market {
         uint256 id;
-        string question;         // The question being predicted (e.g., "Will BTC price be above $100K on Dec 31, 2024?")
+        string question;         // The question being predicted
         uint256 creationTime;    // When the market was created
-        uint256 expirationTime;  // When the market expires and no more bets are accepted
-        uint256 settlementTime;  // When the market will be settled
-        // Address of the oracle contract (either ChainlinkDataFeed or ExternalAPIOracle)
-        address oracleContract;
-        // Identifier for the specific data feed or API endpoint within the oracle contract
-        bytes32 feedOrEndpointId;
-        // Threshold for Price Feed or expected outcome (1 for Yes, 0 for No) for API
-        uint256 resolutionCriteria;
-        uint256 totalYesAmount;  // Total amount bet on "Yes" outcome
-        uint256 totalNoAmount;   // Total amount bet on "No" outcome
+        uint256 expirationTime;  // Trading stops, market locks for settlement prep
+        uint256 settlementTime;  // Target time for oracle to provide result / settlement process starts
+        address oracleContract;  // Address of the oracle contract
+        bytes32 feedOrEndpointId;// Identifier for the specific data feed or API endpoint
+        uint256 resolutionCriteria; // Threshold for Price Feed or expected outcome (1 for Yes, 0 for No) for API
+        // REMOVED: totalYesAmount, totalNoAmount - Replaced by AMM state
+        // NEW: AMM internal state (counts of shares held *by the AMM*) - Simplistic for now
+        uint256 ammYesShares;    // Internal count for AMM pricing
+        uint256 ammNoShares;     // Internal count for AMM pricing
+        // NEW: Collateral pool tracked explicitly (if needed beyond address(this).balance)
+        uint256 collateralPool;  // Total collateral held by the AMM
         MarketStatus status;     // Current status of the market
         Outcome outcome;         // Final outcome of the market
-        string category;         // Category of the market (e.g., "Crypto", "Sports", "Politics")
+        string category;         // Category of the market
         address creator;         // Creator of the market
-        uint256 fee;             // Fee percentage (in basis points, e.g., 100 = 1%)
-        // NEW: Store the type of data source
-        DataSourceType dataSourceType;
-        // NEW: Store the Chainlink request ID if using ExternalAPIOracle for settlement
-        bytes32 settlementRequestId;
+        uint256 fee;             // Fee percentage (in basis points) - How to apply with AMM needs review
+        DataSourceType dataSourceType; // Type of data source used for settlement
+        bytes32 settlementRequestId; // Chainlink request ID if using ExternalAPIOracle for settlement
     }
 
-    // Structure to represent a user's bet
+    // Structure to represent a user's bet (No longer directly used for tracking core position)
+    // Keep for historical data or specific bet details if needed, but share balance is primary
     struct Bet {
         uint256 marketId;
         address user;
-        Outcome prediction;
-        uint256 amount;
-        bool claimed;
+        Outcome prediction; // Reflects the initial bet direction
+        uint256 amount;     // Initial collateral amount
+        bool claimed;       // Tracks if winnings from *this specific bet* were claimed (if keeping Bet struct)
     }
 
     // State variables
     uint256 private nextMarketId = 1;
     mapping(uint256 => Market) public markets;
-    mapping(uint256 => mapping(address => Bet[])) public userBets;
-    mapping(uint256 => address[]) public marketParticipants;
-    
-    // Platform fee (in basis points, e.g., 100 = 1%)
-    uint256 public platformFee = 100; 
-    
-    // NEW: References to the oracle contracts
+    // REMOVED: mapping(uint256 => mapping(address => Bet[])) public userBets; - Replaced by share balances
+    // REMOVED: mapping(uint256 => address[]) public marketParticipants; - Can be derived if needed
+
+    // NEW: Tracking user share balances (marketId => user => outcomeIndex => balance)
+    // outcomeIndex: 0 for No, 1 for Yes (consistent with Outcome enum, skipping NoOutcome)
+    mapping(uint256 => mapping(address => mapping(uint256 => uint256))) public outcomeShares;
+
+    // NEW: Tracking total supply of shares per outcome (marketId => outcomeIndex => totalSupply)
+    mapping(uint256 => mapping(uint256 => uint256)) public totalOutcomeShares;
+
+    // Platform fee (in basis points) - Needs integration with AMM trades
+    uint256 public platformFee = 100; // 1%
+
+    // Oracle contract references
     ChainlinkDataFeed public chainlinkDataFeedOracle;
     ExternalAPIOracle public externalApiOracle;
 
     // Events
     event MarketCreated(uint256 indexed marketId, address indexed creator, string question, DataSourceType dataSourceType);
-    event BetPlaced(uint256 indexed marketId, address indexed user, Outcome prediction, uint256 amount);
+    // UPDATED: BetPlaced -> SharesBought
+    event SharesBought(uint256 indexed marketId, address indexed user, uint256 outcomeIndex, uint256 collateralAmount, uint256 sharesMinted);
+    // NEW: SharesSold event
+    event SharesSold(uint256 indexed marketId, address indexed user, uint256 outcomeIndex, uint256 sharesBurned, uint256 collateralReturned);
     event MarketLocked(uint256 indexed marketId);
     event MarketSettled(uint256 indexed marketId, Outcome outcome);
     event MarketCancelled(uint256 indexed marketId);
-    event RewardClaimed(uint256 indexed marketId, address indexed user, uint256 amount);
+    // UPDATED: RewardClaimed -> WinningsRedeemed
+    event WinningsRedeemed(uint256 indexed marketId, address indexed user, uint256 sharesBurned, uint256 payoutAmount);
     event PlatformFeeUpdated(uint256 newFee);
     event SettlementDataRequested(uint256 indexed marketId, bytes32 requestId);
 
     // Constructor
-    constructor(address _chainlinkDataFeedOracle, address _externalApiOracle) Ownable(msg.sender) {
+    constructor(address _chainlinkDataFeedOracle, address _externalApiOracle, address initialOwner) ConfirmedOwner(initialOwner) {
         require(_chainlinkDataFeedOracle != address(0), "Invalid Chainlink Data Feed Oracle address");
         require(_externalApiOracle != address(0), "Invalid External API Oracle address");
         chainlinkDataFeedOracle = ChainlinkDataFeed(_chainlinkDataFeedOracle);
         externalApiOracle = ExternalAPIOracle(_externalApiOracle);
     }
 
+    // --- AMM Core Logic (Constant Product) ---
+
+    uint256 private constant PRICE_PRECISION = 1e18; // For price calculations
+
     /**
-     * @dev Creates a new prediction market
-     * @param question The question being predicted
-     * @param expirationTime When the market expires and no more bets are accepted
-     * @param settlementTime When the market will be settled
-     * @param dataSourceType Type of data source
-     * @param feedOrEndpointId Identifier for the specific data feed or API endpoint
-     * @param resolutionCriteria Threshold for Price Feed, Expected value (0 or 1) for API
-     * @param category Category of the market
-     * @param fee Fee percentage (in basis points)
+     * @dev Calculates the number of shares a user receives for a given collateral amount.
+     * Implements a constant product market maker formula.
+     * Fees are deducted from collateralAmount *before* calculating shares.
+     * @param marketId ID of the market.
+     * @param outcomeIndex 0 for No, 1 for Yes.
+     * @param collateralAmount Gross amount of collateral sent by the user.
+     * @param feeRecipientPlatform Address to send platform fee.
+     * @param feeRecipientCreator Address to send creator fee.
+     * @return sharesToMint Amount of shares the user should receive.
+     * @return platformFeeAmount Amount of platform fee collected.
+     * @return creatorFeeAmount Amount of creator fee collected.
+     * @return netCollateralAmount Collateral used for AMM calculation after fees.
      */
-    function createMarket(
-        string memory question,
-        uint256 expirationTime,
-        uint256 settlementTime,
-        DataSourceType dataSourceType,
-        bytes32 feedOrEndpointId,
-        uint256 resolutionCriteria,
-        string memory category,
-        uint256 fee
-    ) external returns (uint256) {
-        // Validate input parameters
-        require(expirationTime > block.timestamp, "Expiration time must be in the future");
-        require(settlementTime > expirationTime, "Settlement time must be after expiration time");
-        require(bytes(question).length > 0, "Question cannot be empty");
-        require(fee <= 1000, "Fee cannot exceed 10%"); // Max fee is 10%
+    function _calculateSharesToMint(
+        uint256 marketId,
+        uint256 outcomeIndex,
+        uint256 collateralAmount,
+        address feeRecipientPlatform,
+        address feeRecipientCreator // Added creator fee recipient
+    )
+        internal
+        view
+        returns (uint256 sharesToMint, uint256 platformFeeAmount, uint256 creatorFeeAmount, uint256 netCollateralAmount)
+    {
+        Market storage market = markets[marketId];
+        require(market.id != 0, "Market does not exist");
+        require(outcomeIndex == 0 || outcomeIndex == 1, "Invalid outcome index");
+        require(collateralAmount > 0, "Collateral cannot be zero");
 
-        address oracleContractAddress = (dataSourceType == DataSourceType.ChainlinkPriceFeed)
-            ? address(chainlinkDataFeedOracle)
-            : address(externalApiOracle);
+        // --- Fee Calculation (on input collateral) ---
+        platformFeeAmount = (collateralAmount * platformFee) / 10000;
+        creatorFeeAmount = (collateralAmount * market.fee) / 10000; // Use market-specific fee
+        uint256 totalFee = platformFeeAmount + creatorFeeAmount;
+        require(collateralAmount > totalFee, "Collateral less than fees");
+        netCollateralAmount = collateralAmount - totalFee; // Amount used in AMM calculation
 
-        require(oracleContractAddress != address(0), "Oracle contract not set");
+        // --- AMM Calculation (Constant Product: shares = (reserve_out * collateral_in_net) / (reserve_in + collateral_in_net)) ---
+        uint256 ammYes = market.ammYesShares;
+        uint256 ammNo = market.ammNoShares;
 
-        // Create new market
-        uint256 marketId = nextMarketId++;
-        markets[marketId] = Market({
-            id: marketId,
-            question: question,
-            creationTime: block.timestamp,
-            expirationTime: expirationTime,
-            settlementTime: settlementTime,
-            oracleContract: oracleContractAddress,
-            feedOrEndpointId: feedOrEndpointId,
-            resolutionCriteria: resolutionCriteria,
-            totalYesAmount: 0,
-            totalNoAmount: 0,
-            status: MarketStatus.Open,
-            outcome: Outcome.NoOutcome,
-            category: category,
-            creator: msg.sender,
-            fee: fee,
-            dataSourceType: dataSourceType,
-            settlementRequestId: bytes32(0)
-        });
+        if (outcomeIndex == 1) { // Buying YES shares
+            // reserve_out = ammYesShares, reserve_in = ammNoShares
+            require(ammNo > 0 && ammYes > 0, "AMM reserves must be positive"); // Avoid division by zero / initialization issues
+             // Add netCollateralAmount to the opposing reserve for calculation
+            uint256 denominator = ammNo + netCollateralAmount;
+            require(denominator >= netCollateralAmount, "Overflow add denominator"); // Overflow check
+            sharesToMint = (ammYes * netCollateralAmount) / denominator;
 
-        emit MarketCreated(marketId, msg.sender, question, dataSourceType);
-        return marketId;
+        } else { // Buying NO shares
+            // reserve_out = ammNoShares, reserve_in = ammYesShares
+             require(ammNo > 0 && ammYes > 0, "AMM reserves must be positive");
+             // Add netCollateralAmount to the opposing reserve for calculation
+            uint256 denominator = ammYes + netCollateralAmount;
+            require(denominator >= netCollateralAmount, "Overflow add denominator"); // Overflow check
+            sharesToMint = (ammNo * netCollateralAmount) / denominator;
+        }
+
+        require(sharesToMint > 0, "Shares minted must be positive");
+
+         // Transfer fees (consider moving this to the main function after calculation)
+         // It's safer to calculate first, then perform transfers in the main function.
+         // We return the amounts here.
+
+        return (sharesToMint, platformFeeAmount, creatorFeeAmount, netCollateralAmount);
+    }
+
+
+     /**
+     * @dev Calculates the collateral a user receives for selling shares.
+     * Implements a constant product market maker formula.
+     * Fees are deducted from the calculated collateral *before* returning to user.
+     * @param marketId ID of the market.
+     * @param outcomeIndex 0 for No, 1 for Yes.
+     * @param sharesToSell Amount of shares the user wants to sell.
+     * @param feeRecipientPlatform Address to send platform fee.
+     * @param feeRecipientCreator Address to send creator fee.
+     * @return grossCollateralToReturn Collateral calculated by AMM before fees.
+     * @return platformFeeAmount Amount of platform fee collected.
+     * @return creatorFeeAmount Amount of creator fee collected.
+     * @return netCollateralToReturn Collateral returned to user after fees.
+     */
+    function _calculateCollateralToReturn(
+        uint256 marketId,
+        uint256 outcomeIndex,
+        uint256 sharesToSell,
+        address feeRecipientPlatform,
+        address feeRecipientCreator // Added creator fee recipient
+    )
+        internal
+        view
+        returns (uint256 grossCollateralToReturn, uint256 platformFeeAmount, uint256 creatorFeeAmount, uint256 netCollateralToReturn)
+    {
+        Market storage market = markets[marketId];
+        require(market.id != 0, "Market does not exist");
+        require(outcomeIndex == 0 || outcomeIndex == 1, "Invalid outcome index");
+        require(sharesToSell > 0, "Shares to sell must be positive");
+
+        // --- AMM Calculation (Constant Product: collateral = (reserve_out * shares_in) / (reserve_in + shares_in)) ---
+        uint256 ammYes = market.ammYesShares;
+        uint256 ammNo = market.ammNoShares;
+
+        if (outcomeIndex == 1) { // Selling YES shares
+            // reserve_out = ammNoShares (collateral is backed by the other side)
+            // reserve_in = ammYesShares
+             require(ammNo > 0 && ammYes > 0, "AMM reserves must be positive");
+            uint256 denominator = ammYes + sharesToSell;
+            require(denominator >= sharesToSell, "Overflow add denominator"); // Overflow check
+            grossCollateralToReturn = (ammNo * sharesToSell) / denominator;
+
+        } else { // Selling NO shares
+            // reserve_out = ammYesShares
+            // reserve_in = ammNoShares
+            require(ammNo > 0 && ammYes > 0, "AMM reserves must be positive");
+            uint256 denominator = ammNo + sharesToSell;
+             require(denominator >= sharesToSell, "Overflow add denominator"); // Overflow check
+            grossCollateralToReturn = (ammYes * sharesToSell) / denominator;
+        }
+
+        require(grossCollateralToReturn > 0, "Collateral returned must be positive");
+
+        // --- Fee Calculation (on output collateral) ---
+        platformFeeAmount = (grossCollateralToReturn * platformFee) / 10000;
+        creatorFeeAmount = (grossCollateralToReturn * market.fee) / 10000; // Use market-specific fee
+        uint256 totalFee = platformFeeAmount + creatorFeeAmount;
+
+        if (grossCollateralToReturn > totalFee) {
+             netCollateralToReturn = grossCollateralToReturn - totalFee;
+        } else {
+            // Fees exceed calculated return, user gets nothing, fees take what's available.
+            netCollateralToReturn = 0;
+            // Adjust fee amounts proportionally if needed, or just take the gross amount?
+            // Simplest: take the whole gross amount as fees if it's less than calculated fees.
+            platformFeeAmount = (grossCollateralToReturn * platformFee) / (platformFee + market.fee); // Proportional platform fee
+             creatorFeeAmount = grossCollateralToReturn - platformFeeAmount; // Remainder creator fee
+        }
+
+
+         // Transfer fees (safer to do in the main function)
+         // We return the amounts here.
+
+        return (grossCollateralToReturn, platformFeeAmount, creatorFeeAmount, netCollateralToReturn);
     }
 
     /**
-     * @dev Places a bet on a market
-     * @param marketId ID of the market
-     * @param prediction User's prediction (Yes or No)
+     * @dev Allows users to buy outcome shares using collateral (ETH).
+     * Incorporates CPMM logic and fees.
+     * @param marketId ID of the market.
+     * @param outcomeIndex The outcome to buy shares for (0 for No, 1 for Yes).
      */
-    function placeBet(uint256 marketId, Outcome prediction) external payable {
-        // Get the market
+    function buyShares(uint256 marketId, uint256 outcomeIndex) external payable {
         Market storage market = markets[marketId];
-        
-        // Validate bet conditions
+
+        // Validations
         require(market.id != 0, "Market does not exist");
-        require(market.status == MarketStatus.Open, "Market is not open for bets");
-        require(block.timestamp < market.expirationTime, "Market has expired");
-        require(prediction == Outcome.Yes || prediction == Outcome.No, "Invalid prediction");
-        require(msg.value > 0, "Bet amount must be greater than 0");
+        require(market.status == MarketStatus.Open, "Market is not open");
+        require(block.timestamp < market.expirationTime, "Market trading has expired");
+        require(outcomeIndex == 0 || outcomeIndex == 1, "Invalid outcome index (0 or 1)");
+        require(msg.value > 0, "Collateral amount must be greater than 0");
 
-        // Update market totals
-        if (prediction == Outcome.Yes) {
-            market.totalYesAmount += msg.value;
-        } else {
-            market.totalNoAmount += msg.value;
+        // Calculate shares to mint using AMM logic and fees
+        uint256 collateralAmount = msg.value;
+        (uint256 sharesToMint, uint256 platformFeeAmount, uint256 creatorFeeAmount, uint256 netCollateralAmount) =
+            _calculateSharesToMint(marketId, outcomeIndex, collateralAmount, owner(), market.creator); // Pass fee recipients
+
+        // --- Update State ---
+        // 1. Update AMM internal balances based on shares minted
+        if (outcomeIndex == 1) { // Bought YES shares
+            require(market.ammYesShares >= sharesToMint, "AMM invariant broken (YES)"); // Sanity check
+            market.ammYesShares -= sharesToMint;
+            market.ammNoShares += netCollateralAmount; // Add net collateral to the opposing pool value
+        } else { // Bought NO shares
+            require(market.ammNoShares >= sharesToMint, "AMM invariant broken (NO)"); // Sanity check
+            market.ammNoShares -= sharesToMint;
+            market.ammYesShares += netCollateralAmount; // Add net collateral to the opposing pool value
         }
 
-        // Add user to participants if first bet
-        bool isNewParticipant = true;
-        for (uint i = 0; i < marketParticipants[marketId].length; i++) {
-            if (marketParticipants[marketId][i] == msg.sender) {
-                isNewParticipant = false;
-                break;
-            }
+        // 2. Add *net* collateral (after fees) to the tracked pool
+        market.collateralPool += netCollateralAmount;
+
+        // 3. Mint shares to the user
+        outcomeShares[marketId][msg.sender][outcomeIndex] += sharesToMint;
+
+        // 4. Update total supply for the outcome
+        totalOutcomeShares[marketId][outcomeIndex] += sharesToMint;
+
+        // --- Transfer Fees ---
+        if (platformFeeAmount > 0) {
+            (bool successPlatform, ) = payable(owner()).call{value: platformFeeAmount}("");
+            require(successPlatform, "Platform fee transfer failed");
         }
-        
-        if (isNewParticipant) {
-            marketParticipants[marketId].push(msg.sender);
+        if (creatorFeeAmount > 0) {
+             (bool successCreator, ) = payable(market.creator).call{value: creatorFeeAmount}("");
+             require(successCreator, "Creator fee transfer failed");
         }
 
-        // Record the bet
-        userBets[marketId][msg.sender].push(Bet({
-            marketId: marketId,
-            user: msg.sender,
-            prediction: prediction,
-            amount: msg.value,
-            claimed: false
-        }));
 
-        emit BetPlaced(marketId, msg.sender, prediction, msg.value);
+        emit SharesBought(marketId, msg.sender, outcomeIndex, collateralAmount, sharesToMint); // Emit gross collateral
+    }
+
+
+    /**
+     * @dev Allows users to sell their outcome shares back to the AMM for collateral (ETH).
+     * Incorporates CPMM logic and fees.
+     * @param marketId ID of the market.
+     * @param outcomeIndex The outcome shares to sell (0 for No, 1 for Yes).
+     * @param sharesToSell The amount of shares to sell.
+     */
+    function sellShares(uint256 marketId, uint256 outcomeIndex, uint256 sharesToSell) external {
+        Market storage market = markets[marketId];
+        address user = msg.sender; // Cache user address
+
+        // Validations
+        require(market.id != 0, "Market does not exist");
+        require(market.status == MarketStatus.Open || market.status == MarketStatus.Locked, "Market not open or locked");
+        require(outcomeIndex == 0 || outcomeIndex == 1, "Invalid outcome index (0 or 1)");
+        require(sharesToSell > 0, "Must sell a positive amount of shares");
+        require(outcomeShares[marketId][user][outcomeIndex] >= sharesToSell, "Insufficient share balance");
+
+        // Calculate collateral to return using AMM logic and fees
+        (uint256 grossCollateralToReturn, uint256 platformFeeAmount, uint256 creatorFeeAmount, uint256 netCollateralToReturn) =
+            _calculateCollateralToReturn(marketId, outcomeIndex, sharesToSell, owner(), market.creator); // Pass fee recipients
+
+        require(market.collateralPool >= grossCollateralToReturn, "Insufficient collateral in AMM pool for gross return"); // Check against gross amount
+
+        // --- Update State ---
+        // 1. Burn user's shares
+        outcomeShares[marketId][user][outcomeIndex] -= sharesToSell;
+
+        // 2. Update total supply
+        totalOutcomeShares[marketId][outcomeIndex] -= sharesToSell;
+
+        // 3. Update AMM internal balances
+        if (outcomeIndex == 1) { // Sold YES shares
+            market.ammYesShares += sharesToSell;
+             require(market.ammNoShares >= grossCollateralToReturn, "AMM invariant broken (Sell YES)");
+            market.ammNoShares -= grossCollateralToReturn; // Remove gross collateral from opposing pool value
+        } else { // Sold NO shares
+            market.ammNoShares += sharesToSell;
+            require(market.ammYesShares >= grossCollateralToReturn, "AMM invariant broken (Sell NO)");
+            market.ammYesShares -= grossCollateralToReturn; // Remove gross collateral from opposing pool value
+        }
+
+        // 4. Remove *gross* collateral from the tracked pool (fees are handled separately)
+        market.collateralPool -= grossCollateralToReturn;
+
+        // --- Transfer Payout & Fees ---
+        // Transfer net amount to user
+        if (netCollateralToReturn > 0) {
+             (bool successUser, ) = payable(user).call{value: netCollateralToReturn}("");
+             require(successUser, "Net collateral transfer failed");
+        }
+         
+        // Transfer fees
+        if (platformFeeAmount > 0) {
+            (bool successPlatform, ) = payable(owner()).call{value: platformFeeAmount}("");
+            require(successPlatform, "Platform fee transfer failed");
+        }
+        if (creatorFeeAmount > 0) {
+             (bool successCreator, ) = payable(market.creator).call{value: creatorFeeAmount}("");
+             require(successCreator, "Creator fee transfer failed");
+        }
+
+        emit SharesSold(marketId, user, outcomeIndex, sharesToSell, netCollateralToReturn); // Emit net collateral returned
     }
 
     /**
      * @dev Locks a market when it expires so no more bets can be placed
      * @param marketId ID of the market to lock
      */
-    function lockMarket(uint256 marketId) external {
+    function lockMarket(uint256 marketId) external { // Consider access control - maybe only automation/owner?
         Market storage market = markets[marketId];
-        
+
         require(market.id != 0, "Market does not exist");
         require(market.status == MarketStatus.Open, "Market is not open");
         require(block.timestamp >= market.expirationTime, "Market has not expired yet");
-        
+
         market.status = MarketStatus.Locked;
-        
+
         emit MarketLocked(marketId);
     }
 
+
+    // --- Settlement Logic (Needs review with AMM) ---
+    // settleMarket is onlyOwner, performUpkeep uses Oracle. Keep performUpkeep for now.
+
     /**
-     * @dev Settles a market by determining the outcome
+     * @dev Settles a market by determining the outcome - ONLY OWNER.
+     * Kept for manual intervention, but performUpkeep is primary automated path.
      * @param marketId ID of the market to settle
      * @param outcome The final outcome of the market
      */
     function settleMarket(uint256 marketId, Outcome outcome) external onlyOwner {
         Market storage market = markets[marketId];
-        
+
         require(market.id != 0, "Market does not exist");
-        require(market.status == MarketStatus.Locked, "Market is not locked");
+        // Should be locked or potentially still open if settlement time is reached before expiry lock?
+        require(market.status == MarketStatus.Locked || market.status == MarketStatus.Open, "Market not in settleable state");
         require(block.timestamp >= market.settlementTime, "Settlement time not reached");
         require(outcome == Outcome.Yes || outcome == Outcome.No, "Invalid outcome");
-        
+        require(market.status != MarketStatus.Settled, "Market already settled"); // Prevent re-settlement
+
         market.outcome = outcome;
         market.status = MarketStatus.Settled;
-        
+
         emit MarketSettled(marketId, outcome);
     }
 
-    /**
-     * @dev Allows users to claim their rewards after market settlement
-     * @param marketId ID of the market
-     */
-    function claimReward(uint256 marketId) external {
-        Market storage market = markets[marketId];
-        
-        require(market.id != 0, "Market does not exist");
-        require(market.status == MarketStatus.Settled, "Market is not settled");
-        
-        Bet[] storage bets = userBets[marketId][msg.sender];
-        uint256 totalReward = 0;
-        
-        for (uint i = 0; i < bets.length; i++) {
-            Bet storage bet = bets[i];
-            
-            if (!bet.claimed && bet.prediction == market.outcome) {
-                bet.claimed = true;
-                
-                // Calculate reward based on odds
-                uint256 totalPool = market.totalYesAmount + market.totalNoAmount;
-                uint256 winningPool = (market.outcome == Outcome.Yes) 
-                    ? market.totalYesAmount 
-                    : market.totalNoAmount;
-                uint256 losingPool = totalPool - winningPool;
-                
-                // Calculate platform fee
-                uint256 platformFeeAmount = (losingPool * platformFee) / 10000;
-                uint256 creatorFeeAmount = (losingPool * market.fee) / 10000;
-                uint256 availablePool = losingPool - platformFeeAmount - creatorFeeAmount;
-                
-                // Calculate user's share of the winning pool
-                uint256 userShareOfWinningPool = (bet.amount * 1e18) / winningPool;
-                uint256 reward = bet.amount + (availablePool * userShareOfWinningPool) / 1e18;
-                
-                totalReward += reward;
-            }
-        }
-        
-        require(totalReward > 0, "No rewards to claim");
-        
-        (bool success, ) = payable(msg.sender).call{value: totalReward}("");
-        require(success, "Transfer failed");
-        
-        emit RewardClaimed(marketId, msg.sender, totalReward);
-    }
 
     /**
-     * @dev Cancels a market and refunds all participants
-     * @param marketId ID of the market to cancel
+     * @dev Allows users holding winning shares to redeem them for collateral after settlement.
+     * Replaces claimReward. Assumes 1 winning share redeems for 1 unit of collateral (e.g., 1 ETH).
+     * @param marketId ID of the market.
+     */
+    function redeemWinnings(uint256 marketId) external {
+        Market storage market = markets[marketId];
+
+        require(market.id != 0, "Market does not exist");
+        require(market.status == MarketStatus.Settled, "Market is not settled");
+        require(market.outcome == Outcome.Yes || market.outcome == Outcome.No, "Market outcome not valid");
+
+        // Determine the winning outcome index (0 for No, 1 for Yes)
+        uint256 winningOutcomeIndex = (market.outcome == Outcome.Yes) ? 1 : 0;
+
+        // Get user's balance of winning shares
+        uint256 winningShares = outcomeShares[marketId][msg.sender][winningOutcomeIndex];
+        require(winningShares > 0, "No winning shares to redeem");
+
+        // --- Calculate Payout ---
+        // Assumption: 1 winning share = 1 unit of collateral (e.g., 1 ether)
+        // Adjust multiplier based on collateral token decimals if not ETH.
+        uint256 payoutAmount = winningShares; // Assuming 1:1 redemption with ETH collateral (1 wei share = 1 wei ETH)
+        // Ensure the pool has enough - though theoretically, it should if AMM math is correct.
+        // This check might be redundant if collateralPool tracking is perfect.
+        require(market.collateralPool >= payoutAmount, "Insufficient collateral in pool for redemption");
+
+        // --- Update State ---
+        // 1. Burn user's winning shares
+        outcomeShares[marketId][msg.sender][winningOutcomeIndex] = 0;
+
+        // 2. Update total supply of winning shares
+        totalOutcomeShares[marketId][winningOutcomeIndex] -= winningShares;
+
+        // 3. Reduce collateral pool
+        market.collateralPool -= payoutAmount;
+
+        // --- Transfer Payout ---
+        (bool success, ) = payable(msg.sender).call{value: payoutAmount}("");
+        require(success, "Payout transfer failed");
+
+        emit WinningsRedeemed(marketId, msg.sender, winningShares, payoutAmount);
+    }
+
+
+    /**
+     * @dev Cancels a market and allows refunding of collateral based on shares held.
+     * Needs careful consideration with AMM - how to fairly refund?
+     * Simplest: Refund based on current share value? Or refund original collateral (needs tracking)?
+     * Let's implement refund based on burning shares at *current* AMM price.
+     * @param marketId ID of the market to cancel.
      */
     function cancelMarket(uint256 marketId) external onlyOwner {
         Market storage market = markets[marketId];
-        
+
         require(market.id != 0, "Market does not exist");
-        require(market.status != MarketStatus.Settled && market.status != MarketStatus.Cancelled, 
+        require(market.status != MarketStatus.Settled && market.status != MarketStatus.Cancelled,
                 "Market already settled or cancelled");
-        
+
         market.status = MarketStatus.Cancelled;
-        
-        // Refund all participants
-        address[] memory participants = marketParticipants[marketId];
-        for (uint i = 0; i < participants.length; i++) {
-            address participant = participants[i];
-            Bet[] storage bets = userBets[marketId][participant];
-            
-            uint256 totalRefund = 0;
-            for (uint j = 0; j < bets.length; j++) {
-                if (!bets[j].claimed) {
-                    bets[j].claimed = true;
-                    totalRefund += bets[j].amount;
-                }
-            }
-            
-            if (totalRefund > 0) {
-                payable(participant).transfer(totalRefund);
-            }
-        }
-        
+        // Note: No automatic refund here. Users must call a refund function.
+
         emit MarketCancelled(marketId);
     }
 
     /**
-     * @dev Updates the platform fee
+     * @dev Allows users to claim a refund after a market is cancelled.
+     * Burns *all* their shares (Yes and No) for that market and returns collateral
+     * based on the AMM price *at the time of calling refund*. Fees apply.
+     * @param marketId ID of the cancelled market.
+     */
+    function claimCancellationRefund(uint256 marketId) external {
+         Market storage market = markets[marketId];
+         address user = msg.sender;
+         require(market.id != 0, "Market does not exist");
+         require(market.status == MarketStatus.Cancelled, "Market is not cancelled");
+
+         uint256 sharesYes = outcomeShares[marketId][user][1];
+         uint256 sharesNo = outcomeShares[marketId][user][0];
+         require(sharesYes > 0 || sharesNo > 0, "No shares held for this market");
+
+         uint256 totalNetRefund = 0;
+         uint256 totalPlatformFee = 0;
+         uint256 totalCreatorFee = 0;
+         uint256 totalGrossRefund = 0; // Track gross for pool adjustment
+
+         // Calculate refund for YES shares (like selling them)
+         if (sharesYes > 0) {
+             (uint256 grossCollateralYes, uint256 platformFeeYes, uint256 creatorFeeYes, uint256 netCollateralYes) =
+                 _calculateCollateralToReturn(marketId, 1, sharesYes, owner(), market.creator);
+
+            if (market.collateralPool >= grossCollateralYes) {
+                // Update state for YES shares
+                outcomeShares[marketId][user][1] = 0;
+                totalOutcomeShares[marketId][1] -= sharesYes;
+                market.ammYesShares += sharesYes; // AMM absorbs shares
+                market.ammNoShares -= grossCollateralYes; // Pool value updates
+                market.collateralPool -= grossCollateralYes; // Actual collateral pool updates
+
+                totalNetRefund += netCollateralYes;
+                totalPlatformFee += platformFeeYes;
+                totalCreatorFee += creatorFeeYes;
+                totalGrossRefund += grossCollateralYes;
+            } // else: Not enough collateral in pool for this refund part, skip Yes shares.
+              // Consider partial refunds or alternative handling? Simple skip for now.
+         }
+
+         // Calculate refund for NO shares (like selling them)
+         if (sharesNo > 0) {
+             (uint256 grossCollateralNo, uint256 platformFeeNo, uint256 creatorFeeNo, uint256 netCollateralNo) =
+                 _calculateCollateralToReturn(marketId, 0, sharesNo, owner(), market.creator);
+
+             if (market.collateralPool >= grossCollateralNo) {
+                 // Update state for NO shares
+                 outcomeShares[marketId][user][0] = 0;
+                 totalOutcomeShares[marketId][0] -= sharesNo;
+                 market.ammNoShares += sharesNo; // AMM absorbs shares
+                 market.ammYesShares -= grossCollateralNo; // Pool value updates
+                 market.collateralPool -= grossCollateralNo; // Actual collateral pool updates
+
+                 totalNetRefund += netCollateralNo;
+                 totalPlatformFee += platformFeeNo;
+                 totalCreatorFee += creatorFeeNo;
+                 totalGrossRefund += grossCollateralNo;
+             } // else: Not enough collateral, skip No shares.
+         }
+
+         require(totalGrossRefund > 0, "Could not calculate any refund (maybe insufficient pool)");
+
+         // --- Transfer Payout & Fees ---
+         if (totalNetRefund > 0) {
+              (bool successUser, ) = payable(user).call{value: totalNetRefund}("");
+              require(successUser, "Net refund transfer failed");
+         }
+          if (totalPlatformFee > 0) {
+             (bool successPlatform, ) = payable(owner()).call{value: totalPlatformFee}("");
+             require(successPlatform, "Platform fee transfer failed");
+         }
+         if (totalCreatorFee > 0) {
+              (bool successCreator, ) = payable(market.creator).call{value: totalCreatorFee}("");
+              require(successCreator, "Creator fee transfer failed");
+         }
+
+         // Emit event? Need a new one like MarketRefundClaimed(marketId, user, totalNetRefund);
+    }
+
+
+    /**
+     * @dev Updates the platform fee. Note: Fee logic needs AMM integration.
      * @param newFee New platform fee in basis points
      */
     function updatePlatformFee(uint256 newFee) external onlyOwner {
-        require(newFee <= 1000, "Fee cannot exceed 10%"); // Max fee is 10%
+        require(newFee <= 1000, "Fee cannot exceed 10%"); // Max fee 10%
         platformFee = newFee;
         emit PlatformFeeUpdated(newFee);
     }
 
+    // --- View Functions ---
+
     /**
-     * @dev Get user bets for a specific market
-     * @param marketId ID of the market
-     * @param user Address of the user
+     * @dev Get a user's share balance for a specific outcome in a market.
+     * @param marketId ID of the market.
+     * @param user Address of the user.
+     * @param outcomeIndex Outcome index (0 for No, 1 for Yes).
      */
-    function getUserBets(uint256 marketId, address user) external view returns (Bet[] memory) {
-        return userBets[marketId][user];
+    function getUserShares(uint256 marketId, address user, uint256 outcomeIndex) external view returns (uint256) {
+         require(marketId < nextMarketId, "Market does not exist");
+         require(outcomeIndex == 0 || outcomeIndex == 1, "Invalid outcome index");
+         return outcomeShares[marketId][user][outcomeIndex];
     }
 
     /**
-     * @dev Get all participants for a market
-     * @param marketId ID of the market
+     * @dev Get the total supply of shares for a specific outcome in a market.
+     * @param marketId ID of the market.
+     * @param outcomeIndex Outcome index (0 for No, 1 for Yes).
      */
-    function getMarketParticipants(uint256 marketId) external view returns (address[] memory) {
-        return marketParticipants[marketId];
+    function getTotalShares(uint256 marketId, uint256 outcomeIndex) external view returns (uint256) {
+         require(marketId < nextMarketId, "Market does not exist");
+         require(outcomeIndex == 0 || outcomeIndex == 1, "Invalid outcome index");
+         return totalOutcomeShares[marketId][outcomeIndex];
     }
 
     /**
-     * @dev Get statistics for a market
-     * @param marketId ID of the market
+     * @dev Get the total collateral held in the market's AMM pool.
+     * @param marketId ID of the market.
      */
-    function getMarketStats(uint256 marketId) external view returns (
-        uint256 totalBets,
-        uint256 totalYesAmount,
-        uint256 totalNoAmount,
-        uint256 participantCount
+    function getCollateralBalance(uint256 marketId) external view returns (uint256) {
+        require(markets[marketId].id != 0, "Market does not exist");
+        return markets[marketId].collateralPool;
+        // OR return address(this).balance if only using ETH and no explicit pool tracking
+    }
+
+    /**
+     * @dev Placeholder: Calculates the current price to buy one full share of an outcome.
+     * TODO: Implement actual AMM logic (derivative of cost function).
+     * @param marketId ID of the market.
+     * @param outcomeIndex Outcome index (0 for No, 1 for Yes).
+     */
+    function getOutcomeSharePrice(uint256 marketId, uint256 outcomeIndex) external view returns (uint256 price) {
+         Market storage market = markets[marketId];
+         require(market.id != 0, "Market does not exist");
+         require(outcomeIndex == 0 || outcomeIndex == 1, "Invalid outcome index");
+
+         // --- CPMM Price Calculation: Price = other_reserve / total_reserves ---
+         uint256 ammYes = market.ammYesShares;
+         uint256 ammNo = market.ammNoShares;
+         uint256 totalReserves = ammYes + ammNo;
+
+         require(totalReserves > 0, "Cannot calculate price with zero total reserves"); // Should not happen after init
+
+         if (outcomeIndex == 1) { // Price of YES share
+             // Price = ammNo / (ammYes + ammNo)
+             price = (ammNo * PRICE_PRECISION) / totalReserves;
+         } else { // Price of NO share
+              // Price = ammYes / (ammYes + ammNo)
+             price = (ammYes * PRICE_PRECISION) / totalReserves;
+         }
+         // Price is returned with PRICE_PRECISION (1e18)
+
+         return price;
+    }
+
+
+    /**
+     * @dev Get static market details.
+     * @param marketId ID of the market.
+     */
+     // Renamed function to avoid conflict with mapping name
+    function getMarketInfo(uint256 marketId) external view returns (
+        uint256 id,
+        string memory question,
+        uint256 creationTime,
+        uint256 expirationTime,
+        uint256 settlementTime,
+        MarketStatus status,
+        Outcome outcome,
+        string memory category,
+        address creator,
+        DataSourceType dataSourceType
+        // Add other relevant static fields if needed
     ) {
         Market storage market = markets[marketId];
         require(market.id != 0, "Market does not exist");
-        
-        totalYesAmount = market.totalYesAmount;
-        totalNoAmount = market.totalNoAmount;
-        participantCount = marketParticipants[marketId].length;
-        
-        // Count total bets
-        for (uint i = 0; i < participantCount; i++) {
-            address participant = marketParticipants[marketId][i];
-            totalBets += userBets[marketId][participant].length;
-        }
-        
-        return (totalBets, totalYesAmount, totalNoAmount, participantCount);
+
+        return (
+            market.id,
+            market.question,
+            market.creationTime,
+            market.expirationTime,
+            market.settlementTime,
+            market.status,
+            market.outcome,
+            market.category,
+            market.creator,
+            market.dataSourceType
+        );
     }
 
+
+    // REMOVED: getUserBets, getMarketParticipants, getMarketStats as they are replaced
+    // by new view functions (getUserShares, getTotalShares, AMM state).
+
+
+    // ... (getMarkets remains similar, but returns the modified Market struct) ...
     /**
      * @dev Get all markets (paginated)
      * @param offset Starting index
@@ -386,138 +698,179 @@ contract PredictionMarket is Ownable, AutomationCompatibleInterface {
         if (offset >= totalMarkets) {
             return new Market[](0);
         }
-        
+
         uint256 count = (offset + limit > totalMarkets) ? (totalMarkets - offset) : limit;
         Market[] memory result = new Market[](count);
-        
+
         for (uint i = 0; i < count; i++) {
             result[i] = markets[offset + i + 1]; // remember that ids start at 1
         }
-        
+
         return result;
     }
 
+
+    // --- Chainlink Automation ---
+
     /**
      * @dev Required function for Chainlink Automation compatibility
+     * Checks for markets needing locking or settlement triggering.
      */
     function checkUpkeep(bytes calldata /* checkData */) external view override returns (bool upkeepNeeded, bytes memory performData) {
-        uint256[] memory marketsToProcess = new uint256[](nextMarketId - 1);
+        // Limit loop iterations for gas safety
+        uint256 maxIterations = 50; // Adjust as needed
+        uint256 iterations = 0;
+
+        uint256[] memory marketsToProcess = new uint256[](maxIterations); // Max markets to process per run
         uint256 count = 0;
-        
-        // Find markets that need to be locked or settled
-        for (uint256 i = 1; i < nextMarketId; i++) {
+
+        upkeepNeeded = false; // Assume false initially
+
+        // Iterate backwards from the latest market for efficiency (recent markets more likely to need action)
+        for (uint256 i = nextMarketId - 1; i >= 1 && iterations < maxIterations; i--) {
+            iterations++;
             Market storage market = markets[i];
-            
+
+             // Condition 1: Lock open markets past expiration time
             if (market.status == MarketStatus.Open && block.timestamp >= market.expirationTime) {
-                // Market needs to be locked
                 marketsToProcess[count++] = i;
                 upkeepNeeded = true;
             }
+            // Condition 2: Trigger settlement process for locked markets past settlement time
             else if (market.status == MarketStatus.Locked && block.timestamp >= market.settlementTime) {
-                // Market needs to be settled
-                marketsToProcess[count++] = i;
-                upkeepNeeded = true;
+                 // Check if settlement data request is needed (External API) or direct determination (Price Feed)
+                 bool needsProcessing = false;
+                 if (market.dataSourceType == DataSourceType.ChainlinkPriceFeed) {
+                     needsProcessing = true; // Price feed outcome determined directly in performUpkeep
+                 } else if (market.dataSourceType == DataSourceType.ExternalAPI) {
+                     // Only need upkeep if data hasn't been requested OR if result is ready
+                     if (market.settlementRequestId == bytes32(0)) {
+                         needsProcessing = true; // Need to request data
+                     } else {
+                         // Check if the result is ready in the oracle (needs view function in ExternalAPIOracle)
+                         // bool isResultReady = externalApiOracle.isResultReady(market.settlementRequestId); // Assuming function exists
+                         // if (isResultReady) needsProcessing = true;
+
+                         // TEMPORARY: Assume we always check if request ID exists, performUpkeep handles readiness
+                         needsProcessing = true;
+                     }
+                 }
+
+                 if (needsProcessing) {
+                    marketsToProcess[count++] = i;
+                    upkeepNeeded = true;
+                 }
             }
+
+            if (count >= maxIterations) break; // Stop if we hit the process limit
         }
-        
-        // Prepare performData with market IDs that need processing
+
+        // Prepare performData only if needed
         if (upkeepNeeded) {
-            bytes memory encodedMarketIds = abi.encode(marketsToProcess, count);
-            performData = encodedMarketIds;
+            // Trim the array to the actual count
+            uint256[] memory finalMarkets = new uint256[](count);
+            for(uint j = 0; j < count; j++) {
+                finalMarkets[j] = marketsToProcess[j];
+            }
+            performData = abi.encode(finalMarkets); // Encode only the IDs that need processing
+        } else {
+            performData = bytes(""); // Return empty bytes if no upkeep needed
         }
-        
+
         return (upkeepNeeded, performData);
     }
-    
+
     /**
-     * @dev Function called by Chainlink Automation to lock or settle markets
+     * @dev Function called by Chainlink Automation to lock or settle markets.
+     * Handles locking, requesting data from External API, or settling based on Oracle result.
      */
     function performUpkeep(bytes calldata performData) external override {
-        (uint256[] memory marketIds, uint256 count) = abi.decode(performData, (uint256[], uint256));
-        
-        for (uint i = 0; i < count; i++) {
+        // Ensure caller is a Chainlink Automation registry or owner (for testing)
+        // require(msg.sender == AUTOMATION_REGISTRY || msg.sender == owner(), "Caller not authorized");
+
+        uint256[] memory marketIds = abi.decode(performData, (uint256[]));
+
+        for (uint i = 0; i < marketIds.length; i++) {
             uint256 marketId = marketIds[i];
             Market storage market = markets[marketId];
-            
+
+            // --- Action 1: Lock Market ---
             if (market.status == MarketStatus.Open && block.timestamp >= market.expirationTime) {
-                // Lock the market
                 market.status = MarketStatus.Locked;
                 emit MarketLocked(marketId);
+                // Market is now locked, continue to next iteration or check settlement
             }
-            else if (market.status == MarketStatus.Locked && block.timestamp >= market.settlementTime) {
-                // --- Settlement Logic --- 
+
+            // --- Action 2: Process Settlement ---
+            // Re-check status as it might have just been locked above
+            if (market.status == MarketStatus.Locked && block.timestamp >= market.settlementTime) {
                 if (market.dataSourceType == DataSourceType.ChainlinkPriceFeed) {
-                    // Price Feed: Determine outcome directly
-                    Outcome outcome = determineOutcomeFromOracle(marketId);
-                    if (outcome != Outcome.NoOutcome) { // Handle potential oracle errors
-                         market.outcome = outcome;
-                         market.status = MarketStatus.Settled;
-                         emit MarketSettled(marketId, outcome);
+                    // --- Settle via Chainlink Price Feed ---
+                    Outcome outcome = Outcome.NoOutcome; // Default
+                    try chainlinkDataFeedOracle.isAboveThreshold(market.feedOrEndpointId, int256(market.resolutionCriteria)) returns (bool isAbove) {
+                        outcome = isAbove ? Outcome.Yes : Outcome.No;
+                    } catch {
+                        // Oracle error - ماذا نفعل؟ Cancel market? Re-try later? Log error?
+                        // For now, do nothing, will be picked up in next upkeep check.
+                        // Consider adding an error state or cancellation logic here.
+                        continue; // Skip settlement for this market on this run
                     }
-                    // Consider adding logic here if the oracle fails (e.g., cancel market)
+
+                    if (outcome != Outcome.NoOutcome) {
+                        market.outcome = outcome;
+                        market.status = MarketStatus.Settled;
+                        emit MarketSettled(marketId, outcome);
+                    }
 
                 } else if (market.dataSourceType == DataSourceType.ExternalAPI) {
-                   // External API: Request data if not already requested
-                   if (market.settlementRequestId == bytes32(0)) {
-                       // *** IMPORTANT: Need API URL and JSON Path ***
-                       // These need to be stored or derivable for the market.
-                       // For now, we'll assume placeholder values. Replace with actual logic.
-                       string memory apiUrl = "https://gamma-api.example/market_result"; // Placeholder
-                       string memory jsonPath = "result"; // Placeholder (e.g., path to 0 or 1)
-                       uint256 payment = 0.1 ether; // Placeholder LINK payment (adjust based on network)
+                    // --- Settle via External API Oracle ---
+                    if (market.settlementRequestId == bytes32(0)) {
+                        // Request data if not already requested
+                        // TODO: Need to get API URL, Path, Payment - these should be stored/derivable per market!
+                        // For now, using placeholders. This is a critical missing piece.
+                        string memory apiUrl = "https://api.example.com/result"; // Placeholder
+                        string memory jsonPath = "data.outcome"; // Placeholder (e.g., path to 0 or 1)
+                        uint256 payment = 0; // Placeholder LINK payment (adjust based on oracle fees)
 
-                       try externalApiOracle.requestData(market.feedOrEndpointId, apiUrl, jsonPath, payment) returns (bytes32 requestId) {
-                           market.settlementRequestId = requestId;
-                           emit SettlementDataRequested(marketId, requestId);
-                       } catch {
-                           // Handle failure to request data (e.g., log, retry later, cancel market?)
-                       }
-                   } else {
-                       // Check if the external API oracle has received the response
-                       // Use getOutcomeFromResult, assuming API returns 0 or 1
-                       bool apiResult = externalApiOracle.getOutcomeFromResult(market.settlementRequestId, int256(market.resolutionCriteria));
-                       // Need to handle the case where the result is not yet available in ExternalAPIOracle
-                       // For simplicity, we assume it's available here. Add checks in production.
-                       Outcome outcome = apiResult ? Outcome.Yes : Outcome.No;
+                        try externalApiOracle.requestData(market.feedOrEndpointId, apiUrl, jsonPath, payment) returns (bytes32 requestId) {
+                            market.settlementRequestId = requestId;
+                            emit SettlementDataRequested(marketId, requestId);
+                            // Data requested, settlement will happen in a future upkeep when result is available
+                        } catch {
+                            // Handle failure to request data (e.g., log, retry, cancel?)
+                            // For now, do nothing, will be picked up in next upkeep check.
+                             continue; // Skip this market for now
+                        }
+                    } else {
+                        // Data has been requested, check if result is available and settle
+                        // TODO: Need a robust way to check readiness in ExternalAPIOracle
+                        // bool resultReady;
+                        // int256 resultValue;
+                        // try externalApiOracle.getResult(market.settlementRequestId) returns (bool ready, int256 value) {
+                        //     resultReady = ready;
+                        //     resultValue = value;
+                        // } catch { continue; /* Error checking result, try next time */ }
 
-                       market.outcome = outcome;
-                       market.status = MarketStatus.Settled;
-                       emit MarketSettled(marketId, outcome);
-                   }
+                        // TEMPORARY: Assume getOutcomeFromResult works and handles readiness implicitly (not ideal)
+                        try externalApiOracle.getOutcomeFromResult(market.settlementRequestId, int256(market.resolutionCriteria)) returns (bool apiResult) {
+                             // Result is ready and retrieved
+                             Outcome outcome = apiResult ? Outcome.Yes : Outcome.No;
+                             market.outcome = outcome;
+                             market.status = MarketStatus.Settled;
+                             emit MarketSettled(marketId, outcome);
+                         } catch {
+                             // Result likely not ready yet, or error retrieving.
+                             // Do nothing, wait for next upkeep cycle.
+                             continue;
+                         }
+                    }
                 }
             }
         }
     }
-    
-    /**
-     * @dev Function using real Chainlink Oracle to determine market outcomes
-     * This replaces the mock implementation
-     */
-    function determineOutcomeFromOracle(uint256 marketId) internal view returns (Outcome) {
-        Market storage market = markets[marketId];
-        
-        if (market.dataSourceType == DataSourceType.ChainlinkPriceFeed) {
-            // === Chainlink Price Feed Logic ===
-            try chainlinkDataFeedOracle.isAboveThreshold(market.feedOrEndpointId, int256(market.resolutionCriteria)) returns (bool isAbove) {
-                return isAbove ? Outcome.Yes : Outcome.No;
-            } catch {
-                // Handle oracle error (e.g., feed down)
-                return Outcome.NoOutcome;
-            }
-        } else if (market.dataSourceType == DataSourceType.ExternalAPI) {
-             // === External API Logic ===
-             // This function is now only called directly for Price Feeds during settlement.
-             // For APIs, performUpkeep checks the result *after* the externalApiOracle receives it.
-             // We could add a view function here to check the *latest* stored API result if needed,
-             // but settlement relies on the check in performUpkeep based on the specific settlementRequestId.
-             revert("determineOutcomeFromOracle not applicable for ExternalAPI type during direct call");
-        } else {
-             return Outcome.NoOutcome; // Should not happen
-        }
-    }
-    
-    /**
-     * @dev Function to receive Ether
-     */
+
+    // REMOVED: determineOutcomeFromOracle as its logic is integrated into performUpkeep
+
+    // ... (receive function remains) ...
     receive() external payable {}
 } 

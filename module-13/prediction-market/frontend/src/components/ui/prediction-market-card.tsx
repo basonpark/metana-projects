@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Clock, TrendingUp, DollarSign, Users } from "lucide-react";
+import { Clock, TrendingUp, DollarSign, Users, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
@@ -20,6 +20,7 @@ export interface PredictionMarketCardProps {
   image?: string;
   isFeatured?: boolean;
   className?: string;
+  origin?: "polymarket" | "prophit";
   props?: any;
 }
 
@@ -33,6 +34,7 @@ export function PredictionMarketCard({
   image,
   isFeatured = false,
   className,
+  origin,
   props,
 }: PredictionMarketCardProps) {
   // Format liquidity display
@@ -53,7 +55,16 @@ export function PredictionMarketCard({
       )}
       {...props}
     >
-      <div className="p-4 space-y-3">
+      <div className="p-4 space-y-3 relative">
+        {origin === "prophit" && (
+          <Badge
+            variant="secondary"
+            className="absolute top-2 right-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs px-2 py-0.5 rounded-full shadow-md border-none"
+          >
+            <Sparkles className="h-3 w-3 mr-1" />
+            Prophit
+          </Badge>
+        )}
         <div className="flex items-start gap-3">
           {image && (
             <div className="relative flex-shrink-0 w-12 h-12 rounded-md overflow-hidden border">
@@ -68,7 +79,10 @@ export function PredictionMarketCard({
           )}
           <div className="flex flex-col min-w-0">
             {category && (
-              <Badge variant="outline" className="mb-1 text-xs font-medium">
+              <Badge
+                variant="outline"
+                className="mb-1 text-xs font-medium max-w-fit"
+              >
                 {category}
               </Badge>
             )}

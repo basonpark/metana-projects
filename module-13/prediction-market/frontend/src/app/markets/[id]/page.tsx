@@ -1,9 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useState, useEffect, useMemo } from "react";
+import { useParams, useSearchParams } from "next/navigation";
 import { RootLayout } from "@/components/layout/RootLayout";
-import { MarketStatus, Outcome } from "@/types/contracts";
+import {
+  MarketStatus,
+  Outcome,
+  MarketWithMetadata, // Keep this for contract data type
+} from "@/types/contracts";
+import { PolymarketAPIMarket } from "@/types/market"; // Add correct type for API data
 import {
   ArrowLeft,
   Clock,
@@ -12,11 +17,21 @@ import {
   Users,
   ArrowRight,
   ExternalLink,
+  Info,
+  CheckCircle,
+  XCircle,
+  Loader2,
+  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { fetchMarketById } from "@/services/gamma";
-import { PolymarketMarket } from "@/types/polymarket";
-import { formatTimeRemaining } from "@/lib/utils";
+// Removed the incorrect PolymarketMarket import
+import {
+  formatTimeRemaining,
+  formatEtherShort,
+  formatBalance,
+  formatFee,
+} from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -29,97 +44,236 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { TradeInterface } from "@/components/TradeInterface";
+
+// --- Wagmi and Ethers Imports ---
+import { useAccount, useContractRead } from "wagmi";
+import { ethers } from "ethers";
+import PredictionMarketABI from "@/abi/PredictionMarket.json";
+
+// Define types for contract data for clarity
+interface AmmReserves {
+  ammYesShares: bigint;
+  ammNoShares: bigint;
+}
 
 export default function MarketDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const marketId = params.id as string;
+  const marketType = searchParams.get("type") || "polymarket";
 
-  const [market, setMarket] = useState<PolymarketMarket | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // --- API State (Used primarily for Polymarket type, supplementary for Prophit) ---
+  const [polymarketData, setPolymarketData] = useState<PolymarketAPIMarket | null>(
+    null
+  ); // State specifically for Polymarket API data
+  const [isApiLoading, setIsApiLoading] = useState(true);
 
+  // --- Wallet State ---
+  const { address: userAddress, isConnected } = useAccount();
+
+  // --- Contract Reads (Only run logic if marketType is 'prophit') ---
+  const contractConfig = {
+    address: marketId as `0x${string}`,
+    abi: PredictionMarketABI.abi,
+  };
+
+  const isProphitMarket = marketType === "prophit";
+
+  const { data: contractQuestion, isLoading: isLoadingQuestion } =
+    useContractRead({ ...contractConfig, functionName: "question" });
+  const { data: isResolved, isLoading: isLoadingResolved } = useContractRead({
+    ...contractConfig,
+    functionName: "resolved",
+  });
+  const { data: ammReserves, isLoading: isLoadingReserves } = useContractRead({
+    ...contractConfig,
+    functionName: "getAmmReserves",
+  });
+  const { data: resolutionTime, isLoading: isLoadingResolutionTime } =
+    useContractRead({ ...contractConfig, functionName: "RESOLUTION_TIME" });
+  const { data: platformFeeBps, isLoading: isLoadingPlatformFee } =
+    useContractRead({ ...contractConfig, functionName: "platformFeeBps" });
+  const { data: creatorFeeBps, isLoading: isLoadingCreatorFee } =
+    useContractRead({ ...contractConfig, functionName: "creatorFeeBps" });
+
+  const { data: winningOutcome, isLoading: isLoadingWinningOutcome } =
+    useContractRead({
+      ...contractConfig,
+      functionName: "winningOutcome",
+    });
+
+  const { data: userYesBalance, isLoading: isLoadingYesBalance } =
+    useContractRead({
+      ...contractConfig,
+      functionName: "balanceOf",
+      args: [userAddress, Outcome.Yes],
+    });
+
+  const { data: userNoBalance, isLoading: isLoadingNoBalance } =
+    useContractRead({
+      ...contractConfig,
+      functionName: "balanceOf",
+      args: [userAddress, Outcome.No],
+    });
+
+  // --- API Data Fetching ---
   useEffect(() => {
-    const loadMarketData = async () => {
+    const fetchData = async () => {
+      setPolymarketData(null); // Reset previous API market data
+      setIsApiLoading(true); // Set loading for API fetch
+
+      // Always try to fetch from Gamma API for context, even for Prophit markets
       if (!marketId) return;
-
       try {
-        setIsLoading(true);
-
-        // --- Attempt to load data from Gamma API first ---
-        console.log(`Fetching market ${marketId} via Gamma service...`);
         const apiMarket = await fetchMarketById(marketId);
-
         if (apiMarket) {
-          console.log(`Found market ${marketId} via Gamma service.`);
-          // Map the found market data (using correct fields from PolymarketMarket type)
-          setMarket({
-            id: apiMarket.id,
-            question: apiMarket.question,
-            slug: apiMarket.slug || undefined,
-            description: apiMarket.description || "No description available.",
-            category: apiMarket.category || "General",
-            endDate: apiMarket.endDate,
-            liquidityClob: apiMarket.liquidityClob,
-            volumeClob: apiMarket.volumeClob,
-            bestBid: apiMarket.bestBid,
-            bestAsk: apiMarket.bestAsk,
-            created_at: apiMarket.created_at || new Date().toISOString(),
-            outcomes: apiMarket.outcomes,
-            volume: apiMarket.volume,
-          });
+          setPolymarketData(apiMarket); // Set API data state
         } else {
-          console.log(
-            `Market ${marketId} not found via Gamma service. Using fallback demo data.`
+          console.warn(
+            `Market data for ${marketId} not found via Gamma service.`
           );
-          // Define demo data matching the PolymarketMarket type structure
-          const demoMarket: PolymarketMarket = {
-            id: marketId,
-            question: "Will Bitcoin exceed $100,000 by the end of 2024?",
-            slug: "will-bitcoin-exceed-100000-by-end-of-2024",
-            description: "...", // Add description
-            outcomes: '["Yes", "No"]', // Example outcomes string
-            created_at: new Date(
-              Date.now() - 30 * 24 * 60 * 60 * 1000
-            ).toISOString(),
-            endDate: "2024-12-31T23:59:59Z",
-            volume: 135000, // Example volume
-            category: "Crypto",
-            bestAsk: 0.65,
-            bestBid: 0.35,
-            liquidityClob: 135000, // Example liquidity
-            // Add other required fields from PolymarketMarket if needed
-          };
-          setMarket(demoMarket);
+          // Handle case where API data is crucial for Polymarket type but not found?
+          if (marketType === "polymarket") {
+            // Maybe set an error state?
+          }
         }
-
-        /* --- Removed Contract Fetch Logic ---
-        // Try to get market from our contract
-        // const contractMarket = await getMarket(marketId);
-
-        // if (contractMarket) { ... } else { ... API logic ... } 
-        */
       } catch (error) {
-        // console.error("Error loading market:", error); // Original error log
         console.error("Error loading market data from API:", error);
-        // Optionally fallback to demo data on API error too
+        if (marketType === "polymarket") {
+          // Maybe set an error state?
+        }
       } finally {
-        setIsLoading(false);
+        setIsApiLoading(false);
       }
     };
+    fetchData();
+  }, [marketId, marketType]); // Depend on marketType as well
 
-    loadMarketData();
-  }, [marketId]); // Only depends on marketId now
+  // --- Price Calculation (Only for Prophit) ---
+  const { priceYes, priceNo } = useMemo(() => {
+    if (!isProphitMarket) return { priceYes: 0.5, priceNo: 0.5 }; // Default for non-prophit
 
-  // Format date to readable string
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+    const reserves = ammReserves as AmmReserves | undefined;
+    if (!reserves || reserves.ammYesShares + reserves.ammNoShares === 0n) {
+      return { priceYes: 0.5, priceNo: 0.5 };
+    }
+    const totalReserves = reserves.ammYesShares + reserves.ammNoShares;
+    const priceYesNum =
+      Number((reserves.ammNoShares * 10000n) / totalReserves) / 10000;
+    const priceNoNum =
+      Number((reserves.ammYesShares * 10000n) / totalReserves) / 10000;
+    return { priceYes: priceYesNum, priceNo: priceNoNum };
+  }, [isProphitMarket, ammReserves]);
+
+  // --- Formatting Helpers ---
+  const formatDate = (timestamp: bigint | string | undefined) => {
+    if (timestamp === undefined) return "N/A";
+    let date: Date;
+    if (typeof timestamp === "string") {
+      date = new Date(timestamp); // Handle ISO string from API
+    } else {
+      // Assume bigint from contract
+      date = new Date(Number(timestamp) * 1000);
+    }
     return date.toLocaleDateString(undefined, {
       year: "numeric",
       month: "long",
       day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
+  const formatTimeRemainingAny = (
+    timestampOrString: bigint | string | undefined
+  ) => {
+    if (timestampOrString === undefined) return "N/A";
+    let endDate: string;
+    if (typeof timestampOrString === "string") {
+      endDate = timestampOrString;
+    } else {
+      endDate = new Date(Number(timestampOrString) * 1000).toISOString();
+    }
+    return formatTimeRemaining(endDate);
+  };
 
-  if (isLoading) {
+  // --- Loading and Error States ---
+  const isLoadingCoreContractData =
+    isProphitMarket &&
+    (isLoadingQuestion ||
+      isLoadingResolved ||
+      isLoadingReserves ||
+      isLoadingResolutionTime ||
+      isLoadingPlatformFee ||
+      isLoadingCreatorFee);
+
+  const isUserDataLoading =
+    isProphitMarket &&
+    isConnected &&
+    (isLoadingYesBalance || isLoadingNoBalance);
+
+  // Adjust page loading: Wait for API always, wait for contract only if Prophit
+  const isPageLoading =
+    isApiLoading || (isProphitMarket && isLoadingCoreContractData);
+
+  // Display Data (prioritize contract data for Prophit, API for Polymarket)
+  const displayQuestion = isProphitMarket
+    ? (contractQuestion as string | undefined) ?? "Loading question..."
+    : polymarketData?.question ?? "Loading question...";
+  const displayEndDate = isProphitMarket
+    ? formatDate(resolutionTime as bigint | undefined)
+    : polymarketData?.expirationTime
+    ? formatDate(BigInt(polymarketData.expirationTime * 1000)) // Correct conversion
+    : "N/A";
+  const displayCategory = isProphitMarket
+    ? (contractQuestion as string | undefined) ?? "General" // Use contract data for Prophit category
+    : polymarketData?.category ?? "General";
+  const displayDescription =
+    isProphitMarket
+      ? "Trading occurs on the Prophit protocol via smart contracts."
+      : polymarketData?.description || "No description available.";
+  const displayImage = isProphitMarket ? undefined : polymarketData?.image;
+
+  // Odds/Prices - different sources
+  const displayYesOdds = isProphitMarket
+    ? Math.round(priceYes * 100)
+    : Math.round((polymarketData?.bestAsk ?? 0.5) * 100);
+  const displayNoOdds = isProphitMarket
+    ? Math.round(priceNo * 100)
+    : 100 - Math.round((polymarketData?.bestAsk ?? 0.5) * 100);
+
+  // Get required props for TradeInterface, ensuring they are defined when needed
+  const typedAmmReserves = ammReserves as [bigint, bigint] | undefined;
+  const tradeInterfaceProps = {
+    marketId: marketId as `0x${string}`,
+    ammYesShares: isProphitMarket ? typedAmmReserves?.[0] : undefined,
+    ammNoShares: isProphitMarket ? typedAmmReserves?.[1] : undefined,
+    userYesShares: isProphitMarket
+      ? (userYesBalance as bigint | undefined)
+      : undefined,
+    userNoShares: isProphitMarket
+      ? (userNoBalance as bigint | undefined)
+      : undefined,
+    isResolved: isProphitMarket
+      ? (isResolved as boolean | undefined)
+      : undefined,
+    winningOutcome: isProphitMarket
+      ? (Number(winningOutcome) as Outcome | undefined)
+      : undefined,
+    platformFeeBps: isProphitMarket
+      ? (platformFeeBps as bigint | undefined)
+      : undefined,
+    creatorFeeBps: isProphitMarket
+      ? (creatorFeeBps as bigint | undefined)
+      : undefined,
+    isLoadingContractData: isLoadingCoreContractData,
+  };
+
+  // --- Render Logic ---
+
+  // Initial loading skeleton
+  if (isPageLoading && !(isProphitMarket ? contractQuestion : polymarketData?.question)) {
     return (
       <RootLayout>
         <div className="container mx-auto py-8">
@@ -139,14 +293,15 @@ export default function MarketDetailPage() {
     );
   }
 
-  if (!market) {
+  // Market not found (mainly applies if API fails for Polymarket type)
+  if (!polymarketData && marketType === "polymarket") {
     return (
       <RootLayout>
         <div className="container mx-auto py-8">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-2xl font-bold mb-4">Market Not Found</h1>
             <p className="text-muted-foreground mb-6">
-              The market you're looking for doesn't exist or has been removed.
+              Could not load market data from the API.
             </p>
             <Link
               href="/markets"
@@ -161,12 +316,6 @@ export default function MarketDetailPage() {
     );
   }
 
-  // Calculate odds percentages for display
-  const yesOdds = Math.round((market?.bestAsk ?? 0.5) * 100);
-  // const noOdds = Math.round((market?.bestBid ?? 0.5) * 100); // Don't use bestBid directly
-  // Ensure they roughly add up, adjust if needed (simple approach)
-  const noOdds = 100 - yesOdds; // Derive No odds from Yes odds
-
   return (
     <RootLayout>
       <div className="container mx-auto py-8">
@@ -180,148 +329,351 @@ export default function MarketDetailPage() {
           </Link>
         </div>
 
-        <div className="max-w-3xl mx-auto">
-          {/* Use Card component for better structure */}
-          {/* <div className="rounded-lg border border-border bg-background p-6 shadow-sm"> */}
+        <div className="max-w-3xl mx-auto space-y-6">
           <Card>
             <CardHeader>
               <div className="flex justify-between items-start mb-2">
-                {market.category && (
-                  <Badge variant="outline">{market.category}</Badge>
+                {displayCategory && (
+                  <Badge variant="outline">{displayCategory}</Badge>
                 )}
                 <div className="flex items-center text-xs text-muted-foreground">
                   <Clock className="mr-1 h-3 w-3" />
-                  Ends: {market.endDate ? formatDate(market.endDate) : "N/A"}
+                  Ends: {displayEndDate}
                 </div>
               </div>
               <CardTitle className="text-2xl font-bold">
-                {market.question}
+                {displayQuestion}
               </CardTitle>
-              {/* Optionally show description here or in details section */}
-              {/* <CardDescription>{market.description}</CardDescription> */}
+              <CardDescription className="pt-2">
+                {displayDescription}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Market Image */}
-              {market.image && (
+              {displayImage && (
                 <div className="relative aspect-video w-full overflow-hidden rounded-md mb-4">
                   <Image
-                    src={market.image}
-                    alt={market.question}
+                    src={displayImage}
+                    alt={displayQuestion}
                     fill
                     className="object-cover"
-                    unoptimized // Add if Polymarket images aren't configured in next.config.js
+                    unoptimized
                   />
                 </div>
               )}
 
-              {/* Odds Display (Read-only) */}
+              {/* Market Status (Only shown for Prophit markets) */}
+              {isProphitMarket && (
+                <>
+                  {isLoadingResolved ? (
+                    <Alert variant="default" className="bg-muted/50">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <AlertTitle>Loading Status</AlertTitle>
+                      <AlertDescription>
+                        Checking market resolution status...
+                      </AlertDescription>
+                    </Alert>
+                  ) : isResolved ? (
+                    <Alert
+                      variant={
+                        Number(winningOutcome) === Outcome.Yes
+                          ? "default"
+                          : Number(winningOutcome) === Outcome.No
+                          ? "destructive"
+                          : "default"
+                      }
+                      className="border-2"
+                    >
+                      {Number(winningOutcome) === Outcome.Yes ? (
+                        <CheckCircle className="h-4 w-4" />
+                      ) : (
+                        <XCircle className="h-4 w-4" />
+                      )}
+                      <AlertTitle>Market Resolved</AlertTitle>
+                      <AlertDescription>
+                        The winning outcome is:{" "}
+                        <strong className="font-semibold">
+                          {Number(winningOutcome) === Outcome.Yes
+                            ? "YES"
+                            : "NO"}
+                        </strong>
+                        . You can redeem winnings below if you hold the winning
+                        shares.
+                      </AlertDescription>
+                    </Alert>
+                  ) : (
+                    <Alert variant="default" className="bg-muted/50">
+                      <Info className="h-4 w-4" />
+                      <AlertTitle>Market Open</AlertTitle>
+                      <AlertDescription>
+                        This market is currently active for trading.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </>
+              )}
+
+              {/* Odds/Price Display */}
               <div className="space-y-3">
                 <h3 className="text-sm font-medium text-muted-foreground">
-                  Current Odds
+                  {isProphitMarket
+                    ? "Current Price (from AMM)"
+                    : "Current Odds"}
+                  {isProphitMarket && isLoadingReserves && (
+                    <Loader2 className="inline h-3 w-3 ml-2 animate-spin" />
+                  )}
                 </h3>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center p-4 border rounded-md">
-                    <div className="text-lg font-semibold">YES</div>
-                    <div className="text-3xl font-bold">{yesOdds}%</div>
+                  <div
+                    className={`text-center p-4 border rounded-md ${
+                      isProphitMarket
+                        ? "bg-green-500/10 border-green-500/30"
+                        : ""
+                    }`}
+                  >
+                    <div
+                      className={`text-lg font-semibold ${
+                        isProphitMarket ? "text-green-700" : ""
+                      }`}
+                    >
+                      YES
+                    </div>
+                    <div
+                      className={`text-3xl font-bold ${
+                        isProphitMarket ? "text-green-600" : ""
+                      }`}
+                    >
+                      {isProphitMarket && isLoadingReserves ? (
+                        <Loader2 className="h-7 w-7 mx-auto animate-spin" />
+                      ) : (
+                        `${displayYesOdds}%`
+                      )}
+                    </div>
                   </div>
-                  <div className="text-center p-4 border rounded-md">
-                    <div className="text-lg font-semibold">NO</div>
-                    <div className="text-3xl font-bold">{noOdds}%</div>
+                  <div
+                    className={`text-center p-4 border rounded-md ${
+                      isProphitMarket ? "bg-red-500/10 border-red-500/30" : ""
+                    }`}
+                  >
+                    <div
+                      className={`text-lg font-semibold ${
+                        isProphitMarket ? "text-red-700" : ""
+                      }`}
+                    >
+                      NO
+                    </div>
+                    <div
+                      className={`text-3xl font-bold ${
+                        isProphitMarket ? "text-red-600" : ""
+                      }`}
+                    >
+                      {isProphitMarket && isLoadingReserves ? (
+                        <Loader2 className="h-7 w-7 mx-auto animate-spin" />
+                      ) : (
+                        `${displayNoOdds}%`
+                      )}
+                    </div>
                   </div>
                 </div>
-                {/* Progress Bar Visual */}
                 <div className="h-2 w-full bg-muted rounded-full overflow-hidden flex">
                   <div
-                    className="h-full bg-primary"
-                    style={{ width: `${yesOdds}%` }}
+                    className={`h-full ${
+                      isProphitMarket ? "bg-green-500" : "bg-primary"
+                    } transition-all duration-300 ease-in-out`}
+                    style={{ width: `${displayYesOdds}%` }}
                   />
-                  {/* Add a slight border/gap? */}
                   <div
-                    className="h-full bg-secondary"
-                    style={{ width: `${noOdds}%` }}
+                    className={`h-full ${
+                      isProphitMarket ? "bg-red-500" : "bg-secondary"
+                    } transition-all duration-300 ease-in-out`}
+                    style={{ width: `${displayNoOdds}%` }}
                   />
                 </div>
               </div>
 
-              <Separator />
+              {/* Separator and User Holdings + Trade Interface (Only for Prophit) */}
+              {isProphitMarket && (
+                <>
+                  <Separator />
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-medium text-muted-foreground flex items-center">
+                      <Wallet className="h-4 w-4 mr-2" /> Your Share Balances
+                      {isUserDataLoading && (
+                        <Loader2 className="inline h-3 w-3 ml-2 animate-spin" />
+                      )}
+                    </h3>
+                    {isConnected ? (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="p-3 rounded-lg bg-muted/50 text-center">
+                          <div className="text-muted-foreground mb-1">
+                            YES Shares
+                          </div>
+                          <div className="font-mono text-lg font-medium">
+                            {isUserDataLoading ? (
+                              <Loader2 className="h-5 w-5 mx-auto animate-spin" />
+                            ) : (
+                              formatBalance(
+                                userYesBalance as bigint | undefined
+                              )
+                            )}
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-lg bg-muted/50 text-center">
+                          <div className="text-muted-foreground mb-1">
+                            NO Shares
+                          </div>
+                          <div className="font-mono text-lg font-medium">
+                            {isUserDataLoading ? (
+                              <Loader2 className="h-5 w-5 mx-auto animate-spin" />
+                            ) : (
+                              formatBalance(userNoBalance as bigint | undefined)
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        Connect your wallet to see your share balances.
+                      </p>
+                    )}
+                  </div>
+                  <Separator />
+                  {/* --- Render TradeInterface --- */}
+                  <TradeInterface {...tradeInterfaceProps} />
+                  <Separator />
+                </>
+              )}
 
-              {/* Polymarket Link Button */}
-              {market.slug && (
+              {/* Polymarket Link Button (Shown for Polymarket type, or if slug exists for Prophit) */}
+              {polymarketData?.slug && (
                 <a
-                  href={`https://polymarket.com/market/${market.slug}`}
+                  href={`https://polymarket.com/market/${polymarketData.slug}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="block w-full"
                 >
                   <Button variant="outline" className="w-full">
-                    View / Bet on Polymarket
+                    {marketType === "polymarket"
+                      ? "Trade on Polymarket"
+                      : "View on Polymarket (External)"}
                     <ExternalLink className="ml-2 h-4 w-4" />
                   </Button>
                 </a>
               )}
 
-              <Separator />
-
-              {/* Details Section */}
+              {/* Details Section - Display varies */}
               <div className="space-y-4">
                 <h3 className="text-lg font-medium">Details</h3>
-                {market.description && (
-                  <div className="text-sm text-muted-foreground whitespace-pre-line">
-                    {market.description}
-                  </div>
-                )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                  {/* Time Remaining */}
                   <div className="p-3 rounded-lg bg-muted/50">
                     <div className="text-muted-foreground mb-1">
                       Time Remaining
                     </div>
                     <div className="font-medium">
-                      {market.endDate
-                        ? formatTimeRemaining(market.endDate)
-                        : "N/A"}
+                      {isLoadingResolutionTime && isProphitMarket ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        formatTimeRemainingAny(
+                          isProphitMarket
+                            ? (resolutionTime as bigint | undefined)
+                            : polymarketData?.expirationTime
+                            ? BigInt(polymarketData.expirationTime)
+                            : undefined
+                        )
+                      )}
                     </div>
                   </div>
-                  <div className="p-3 rounded-lg bg-muted/50">
-                    <div className="text-muted-foreground mb-1">Liquidity</div>
-                    <div className="font-medium">
-                      ${market.liquidityClob?.toLocaleString() ?? "0"}
+
+                  {/* Fees (Prophit) vs Liquidity/Volume (Polymarket) */}
+                  {isProphitMarket ? (
+                    <>
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <div className="text-muted-foreground mb-1">
+                          Platform Fee
+                        </div>
+                        <div className="font-medium">
+                          {isLoadingPlatformFee ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            formatFee(platformFeeBps as bigint | undefined)
+                          )}
+                        </div>
+                      </div>
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <div className="text-muted-foreground mb-1">
+                          Creator Fee
+                        </div>
+                        <div className="font-medium">
+                          {isLoadingCreatorFee ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            formatFee(creatorFeeBps as bigint | undefined)
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <div className="text-muted-foreground mb-1">
+                          Liquidity
+                        </div>
+                        <div className="font-medium">
+                          $
+                          {polymarketData?.liquidityClob?.toLocaleString() ??
+                            "0"}
+                        </div>
+                      </div>
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <div className="text-muted-foreground mb-1">
+                          Volume (24h)
+                        </div>
+                        <div className="font-medium">
+                          $
+                          {polymarketData?.volumeClob?.toLocaleString() ?? "0"}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Created Date (from API if available) */}
+                  {polymarketData?.creationTime && (
+                    <div className="p-3 rounded-lg bg-muted/50">
+                      <div className="text-muted-foreground mb-1">
+                        Created (approx)
+                      </div>
+                      <div className="font-medium">
+                        {new Date(
+                          polymarketData.creationTime * 1000
+                        ).toLocaleDateString()}
+                      </div>
                     </div>
-                  </div>
-                  <div className="p-3 rounded-lg bg-muted/50">
-                    <div className="text-muted-foreground mb-1">
-                      Volume (24h)
-                    </div>
-                    {/* Assuming volumeClob is 24h volume, adjust if needed */}
-                    <div className="font-medium">
-                      ${market.volumeClob?.toLocaleString() ?? "0"}
-                    </div>
-                  </div>
-                  <div className="p-3 rounded-lg bg-muted/50">
-                    <div className="text-muted-foreground mb-1">Created</div>
-                    <div className="font-medium">
-                      {market.created_at
-                        ? formatDate(market.created_at)
-                        : "N/A"}
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
               <Separator />
 
-              {/* How it works section */}
+              {/* How it works section - Content varies */}
               <div className="p-4 rounded-lg border border-dashed bg-muted/20">
                 <h3 className="text-sm font-medium mb-2">How This Works</h3>
-                <p className="text-sm text-muted-foreground">
-                  This page displays market data from Polymarket via the Gamma
-                  API. Trading occurs directly on the Polymarket platform.
-                  Prices reflect the market's perceived probability.
-                </p>
+                {isProphitMarket ? (
+                  <p className="text-sm text-muted-foreground">
+                    This market operates directly on the blockchain via our
+                    Prophit protocol. Prices are determined by the smart
+                    contract's AMM. Connect your wallet to trade YES/NO shares
+                    or redeem winnings after resolution.
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    This page displays market data from Polymarket via the Gamma
+                    API. Trading occurs directly on the Polymarket platform.
+                    Prices reflect the market's perceived probability.
+                  </p>
+                )}
               </div>
             </CardContent>
-            {/* <CardFooter> Optional Footer </CardFooter> */}
           </Card>
-          {/* </div> */}
         </div>
       </div>
     </RootLayout>

@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { PredictionMarketCard } from "@/components/ui/prediction-market-card";
 import { fetchActivePolymarketMarkets } from "@/services/gamma";
 import { categorizeMarket, formatTimeRemaining } from "@/lib/utils";
-import { PolymarketMarket } from "@/types/polymarket";
+import { PolymarketAPIMarket } from "@/types/market";
 import { RootLayout } from "@/components/layout/RootLayout";
 
 export default function CategoryPage() {
@@ -17,7 +17,7 @@ export default function CategoryPage() {
       : "Unknown";
   }, [params.category]);
 
-  const [categoryMarkets, setCategoryMarkets] = useState<PolymarketMarket[]>(
+  const [categoryMarkets, setCategoryMarkets] = useState<PolymarketAPIMarket[]>(
     []
   );
   const [isLoading, setIsLoading] = useState(true);
@@ -37,7 +37,7 @@ export default function CategoryPage() {
         console.log(
           `Fetching all markets to filter for category: ${category}...`
         );
-        const allMarkets = await fetchActivePolymarketMarkets();
+        const allMarkets: PolymarketAPIMarket[] = await fetchActivePolymarketMarkets();
         console.log(`Fetched ${allMarkets.length} total markets. Filtering...`);
 
         const filtered = allMarkets.filter((market) => {
@@ -122,9 +122,7 @@ export default function CategoryPage() {
                     no: 100 - Math.round((market.bestAsk ?? 0.5) * 100),
                   }}
                   liquidity={market.liquidityClob?.toFixed(2) ?? "0"}
-                  timeRemaining={
-                    market.endDate ? formatTimeRemaining(market.endDate) : "N/A"
-                  }
+                  timeRemaining={market.expirationTime ? formatTimeRemaining(market.expirationTime * 1000) : "N/A"}
                   category={getCategoryTitle()}
                   image={market.image}
                 />
