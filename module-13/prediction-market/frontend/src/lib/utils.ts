@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { PolymarketMarket } from "@/types/polymarket"
+import { PolymarketAPIMarket } from "@/types/market"
 import { ethers } from "ethers" // Import ethers for formatting
 
 export function cn(...inputs: ClassValue[]) {
@@ -36,10 +36,10 @@ export function formatTimeRemaining(endDateStringOrTimestamp: string | number): 
 /**
  * Categorizes a market based on keywords in its question or slug.
  * Uses the market's predefined category if available.
- * @param market - The PolymarketMarket object.
+ * @param market - The PolymarketAPIMarket object.
  * @returns A category string.
  */
-export const categorizeMarket = (market: PolymarketMarket): string => {
+export function categorizeMarket(market: PolymarketAPIMarket): string {
   // Prioritize the category provided by the API if it exists and isn't empty/generic
   if (market.category && market.category.trim() !== '' && market.category.toLowerCase() !== 'other') {
     // Simple pluralization check - very basic

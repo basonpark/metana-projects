@@ -119,19 +119,42 @@ export const useMarketContractSafe = () => {
   const { isLoading: isConfirming, isSuccess: isConfirmed } = 
     useWaitForTransactionReceipt({ hash });
 
+  // --- Placeholder Functions for Portfolio (To be implemented) ---
+  const getMarketsCreatedByUser = async (offset: number, limit: number): Promise<any[]> => {
+    console.warn('[useMarketContractSafe] getMarketsCreatedByUser not implemented.');
+    return [];
+  };
+  const getUserPositions = async (): Promise<any[]> => {
+    console.warn('[useMarketContractSafe] getUserPositions not implemented.');
+    return [];
+  };
+  const getClaimableRewards = async (): Promise<any[]> => {
+    console.warn('[useMarketContractSafe] getClaimableRewards not implemented.');
+    return [];
+  };
+  const claimReward = async (marketId: string): Promise<void> => {
+    console.warn('[useMarketContractSafe] claimReward not implemented for market:', marketId);
+    // In a real implementation, this would likely call writeContract
+    return;
+  };
+
   // Return functions and states needed by components
   return {
     // Factory reads
     getCategories,
-    getMarkets, 
+    getMarketsCreatedByUser,
+    getUserPositions,
+    getClaimableRewards,
     // Factory writes
     createMarket, // Added
+    claimReward,
     // Contract connection state
     isReady,
     factoryAddress,
     expectedChainId,
     // Transaction states
     isSubmitting: isPending, // Use isPending from useWriteContract
+    isLoading: isPending || isConfirming,
     isConfirming,
     isConfirmed,
     hash, // Transaction hash

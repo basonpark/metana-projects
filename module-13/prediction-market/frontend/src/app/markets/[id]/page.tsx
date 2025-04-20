@@ -3,7 +3,12 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { RootLayout } from "@/components/layout/RootLayout";
-import { MarketStatus, Outcome } from "@/types/contracts";
+import {
+  MarketStatus,
+  Outcome,
+  MarketWithMetadata, // Keep this for contract data type
+} from "@/types/contracts";
+import { PolymarketAPIMarket } from "@/types/market"; // Add correct type for API data
 import {
   ArrowLeft,
   Clock,
@@ -20,7 +25,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { fetchMarketById } from "@/services/gamma";
-import { PolymarketMarket } from "@/types/polymarket";
+// Removed the incorrect PolymarketMarket import
 import {
   formatTimeRemaining,
   formatEtherShort,
@@ -60,9 +65,9 @@ export default function MarketDetailPage() {
   const marketType = searchParams.get("type") || "polymarket";
 
   // --- API State (Used primarily for Polymarket type, supplementary for Prophit) ---
-  const [polymarketData, setPolymarketData] = useState<PolymarketMarket | null>(
+  const [polymarketData, setPolymarketData] = useState<PolymarketAPIMarket | null>(
     null
-  );
+  ); // State specifically for Polymarket API data
   const [isApiLoading, setIsApiLoading] = useState(true);
 
   // --- Wallet State ---
@@ -115,13 +120,16 @@ export default function MarketDetailPage() {
 
   // --- API Data Fetching ---
   useEffect(() => {
-    const loadApiData = async () => {
+    const fetchData = async () => {
+      setPolymarketData(null); // Reset previous API market data
+      setIsApiLoading(true); // Set loading for API fetch
+
+      // Always try to fetch from Gamma API for context, even for Prophit markets
       if (!marketId) return;
       try {
-        setIsApiLoading(true);
         const apiMarket = await fetchMarketById(marketId);
         if (apiMarket) {
-          setPolymarketData(apiMarket);
+          setPolymarketData(apiMarket); // Set API data state
         } else {
           console.warn(
             `Market data for ${marketId} not found via Gamma service.`
@@ -140,7 +148,7 @@ export default function MarketDetailPage() {
         setIsApiLoading(false);
       }
     };
-    loadApiData();
+    fetchData();
   }, [marketId, marketType]); // Depend on marketType as well
 
   // --- Price Calculation (Only for Prophit) ---
@@ -209,79 +217,23 @@ export default function MarketDetailPage() {
   const isPageLoading =
     isApiLoading || (isProphitMarket && isLoadingCoreContractData);
 
-  // Determine primary data source based on type
-  const marketData = isProphitMarket
-    ? {
-        id: marketId,
-        question: contractQuestion as string | undefined,
-        endDate: resolutionTime as bigint | undefined,
-        // Use API data for supplementary fields if available
-        category: polymarketData?.category,
-        description: polymarketData?.description,
-        image: polymarketData?.image,
-        slug: polymarketData?.slug,
-        created_at: polymarketData?.created_at,
-        liquidityClob: polymarketData?.liquidityClob,
-        volumeClob: polymarketData?.volumeClob,
-      }
-    : polymarketData;
-
-  // --- Render Logic ---
-
-  // Initial loading skeleton
-  if (isPageLoading && !marketData?.question) {
-    return (
-      <RootLayout>
-        <div className="container mx-auto py-8">
-          <div className="max-w-3xl mx-auto">
-            <div className="rounded-lg border border-border bg-background p-6 shadow-sm space-y-6 animate-pulse">
-              <div className="h-8 bg-muted rounded w-3/4"></div>
-              <div className="h-4 bg-muted rounded w-1/2"></div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="h-40 bg-muted rounded"></div>
-                <div className="h-40 bg-muted rounded"></div>
-              </div>
-              <div className="h-20 bg-muted rounded"></div>
-            </div>
-          </div>
-        </div>
-      </RootLayout>
-    );
-  }
-
-  // Market not found (mainly applies if API fails for Polymarket type)
-  if (!marketData && marketType === "polymarket") {
-    return (
-      <RootLayout>
-        <div className="container mx-auto py-8">
-          <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-2xl font-bold mb-4">Market Not Found</h1>
-            <p className="text-muted-foreground mb-6">
-              Could not load market data from the API.
-            </p>
-            <Link
-              href="/markets"
-              className="inline-flex items-center text-primary hover:underline"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Markets
-            </Link>
-          </div>
-        </div>
-      </RootLayout>
-    );
-  }
-
   // Display Data (prioritize contract data for Prophit, API for Polymarket)
-  const displayQuestion = marketData?.question || "Loading question...";
+  const displayQuestion = isProphitMarket
+    ? (contractQuestion as string | undefined) ?? "Loading question..."
+    : polymarketData?.question ?? "Loading question...";
   const displayEndDate = isProphitMarket
     ? formatDate(resolutionTime as bigint | undefined)
-    : marketData?.endDate
-    ? formatDate(marketData.endDate)
+    : polymarketData?.expirationTime
+    ? formatDate(BigInt(polymarketData.expirationTime * 1000)) // Correct conversion
     : "N/A";
-  const displayCategory = marketData?.category || "General";
+  const displayCategory = isProphitMarket
+    ? (contractQuestion as string | undefined) ?? "General" // Use contract data for Prophit category
+    : polymarketData?.category ?? "General";
   const displayDescription =
-    marketData?.description || "No description available.";
-  const displayImage = marketData?.image;
+    isProphitMarket
+      ? "Trading occurs on the Prophit protocol via smart contracts."
+      : polymarketData?.description || "No description available.";
+  const displayImage = isProphitMarket ? undefined : polymarketData?.image;
 
   // Odds/Prices - different sources
   const displayYesOdds = isProphitMarket
@@ -318,6 +270,52 @@ export default function MarketDetailPage() {
     isLoadingContractData: isLoadingCoreContractData,
   };
 
+  // --- Render Logic ---
+
+  // Initial loading skeleton
+  if (isPageLoading && !(isProphitMarket ? contractQuestion : polymarketData?.question)) {
+    return (
+      <RootLayout>
+        <div className="container mx-auto py-8">
+          <div className="max-w-3xl mx-auto">
+            <div className="rounded-lg border border-border bg-background p-6 shadow-sm space-y-6 animate-pulse">
+              <div className="h-8 bg-muted rounded w-3/4"></div>
+              <div className="h-4 bg-muted rounded w-1/2"></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="h-40 bg-muted rounded"></div>
+                <div className="h-40 bg-muted rounded"></div>
+              </div>
+              <div className="h-20 bg-muted rounded"></div>
+            </div>
+          </div>
+        </div>
+      </RootLayout>
+    );
+  }
+
+  // Market not found (mainly applies if API fails for Polymarket type)
+  if (!polymarketData && marketType === "polymarket") {
+    return (
+      <RootLayout>
+        <div className="container mx-auto py-8">
+          <div className="max-w-3xl mx-auto text-center">
+            <h1 className="text-2xl font-bold mb-4">Market Not Found</h1>
+            <p className="text-muted-foreground mb-6">
+              Could not load market data from the API.
+            </p>
+            <Link
+              href="/markets"
+              className="inline-flex items-center text-primary hover:underline"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Markets
+            </Link>
+          </div>
+        </div>
+      </RootLayout>
+    );
+  }
+
   return (
     <RootLayout>
       <div className="container mx-auto py-8">
@@ -335,7 +333,7 @@ export default function MarketDetailPage() {
           <Card>
             <CardHeader>
               <div className="flex justify-between items-start mb-2">
-                {marketData?.category && (
+                {displayCategory && (
                   <Badge variant="outline">{displayCategory}</Badge>
                 )}
                 <div className="flex items-center text-xs text-muted-foreground">
@@ -546,9 +544,9 @@ export default function MarketDetailPage() {
               )}
 
               {/* Polymarket Link Button (Shown for Polymarket type, or if slug exists for Prophit) */}
-              {(marketType === "polymarket" || marketData?.slug) && (
+              {polymarketData?.slug && (
                 <a
-                  href={`https://polymarket.com/market/${marketData?.slug}`}
+                  href={`https://polymarket.com/market/${polymarketData.slug}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="block w-full"
@@ -578,7 +576,9 @@ export default function MarketDetailPage() {
                         formatTimeRemainingAny(
                           isProphitMarket
                             ? (resolutionTime as bigint | undefined)
-                            : polymarketData?.endDate
+                            : polymarketData?.expirationTime
+                            ? BigInt(polymarketData.expirationTime)
+                            : undefined
                         )
                       )}
                     </div>
@@ -629,20 +629,23 @@ export default function MarketDetailPage() {
                           Volume (24h)
                         </div>
                         <div className="font-medium">
-                          ${polymarketData?.volumeClob?.toLocaleString() ?? "0"}
+                          $
+                          {polymarketData?.volumeClob?.toLocaleString() ?? "0"}
                         </div>
                       </div>
                     </>
                   )}
 
                   {/* Created Date (from API if available) */}
-                  {marketData?.created_at && (
+                  {polymarketData?.creationTime && (
                     <div className="p-3 rounded-lg bg-muted/50">
                       <div className="text-muted-foreground mb-1">
                         Created (approx)
                       </div>
                       <div className="font-medium">
-                        {new Date(marketData.created_at).toLocaleDateString()}
+                        {new Date(
+                          polymarketData.creationTime * 1000
+                        ).toLocaleDateString()}
                       </div>
                     </div>
                   )}
