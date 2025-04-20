@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { RootLayout } from "@/components/layout/RootLayout";
 import { PredictionMarketCard } from "@/components/ui/prediction-market-card";
 import Link from "next/link";
-import { PolymarketMarket } from "@/types/polymarket";
+import { PolymarketAPIMarket } from "@/types/market";
 import { fetchActivePolymarketMarkets } from "@/services/gamma";
 import { ProphitHero } from "@/components/ProphitHero";
 import { categorizeMarket, formatTimeRemaining } from "@/lib/utils";
@@ -63,11 +63,12 @@ const getPaginationNumbers = (
 };
 
 export default function HomePage() {
-  const [allMarkets, setAllMarkets] = useState<PolymarketMarket[]>([]);
+  const [allMarkets, setAllMarkets] = useState<PolymarketAPIMarket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const [selectedSource, setSelectedSource] = useState<string>("All");
   const [currentPage, setCurrentPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<string>("timeRemaining");
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -124,7 +125,17 @@ export default function HomePage() {
         ).sort(),
       ];
 
-      let currentFilteredMarkets = categorizedMarkets.filter((market) => {
+      // Filter by Source first
+      let sourceFilteredMarkets = categorizedMarkets;
+      if (selectedSource === "Prophit Markets") {
+        sourceFilteredMarkets = []; // Placeholder - no Prophit data yet
+      } else if (selectedSource === "External Markets") {
+        // Assume allMarkets currently holds external data
+        sourceFilteredMarkets = categorizedMarkets;
+      } // 'All' uses the default categorizedMarkets
+
+      // Apply category and search filters to the source-filtered list
+      let currentFilteredMarkets = sourceFilteredMarkets.filter((market) => {
         const matchesCategory =
           selectedCategory === "All" ||
           market.derivedCategory === selectedCategory;
@@ -147,8 +158,12 @@ export default function HomePage() {
             return participantsB - participantsA;
           case "timeRemaining":
           default:
-            const timeA = a.endDate ? new Date(a.endDate).getTime() : Infinity;
-            const timeB = b.endDate ? new Date(b.endDate).getTime() : Infinity;
+            const timeA = a.expirationTime
+              ? new Date(a.expirationTime * 1000).getTime()
+              : Infinity;
+            const timeB = b.expirationTime
+              ? new Date(b.expirationTime * 1000).getTime()
+              : Infinity;
             const diffA = timeA - now;
             const diffB = timeB - now;
             if (diffA <= 0 && diffB <= 0) return timeB - timeA;
@@ -174,11 +189,18 @@ export default function HomePage() {
         totalPages: calculatedTotalPages,
         paginatedMarkets: currentPaginatedMarkets,
       };
-    }, [allMarkets, selectedCategory, searchTerm, currentPage, sortOrder]);
+    }, [
+      allMarkets,
+      selectedCategory,
+      selectedSource,
+      searchTerm,
+      currentPage,
+      sortOrder,
+    ]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCategory, searchTerm, sortOrder]);
+  }, [selectedCategory, selectedSource, searchTerm, sortOrder]);
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -194,17 +216,17 @@ export default function HomePage() {
         className="container mx-auto px-4 py-12 md:py-16"
         id="market-browser"
       >
-        <div className="mb-8 space-y-4">
-          <div className="relative max-w-xl mx-auto">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="flex flex-col justify-between items-center gap-4 mb-8">
+          <div className="w-full md:w-1/3 relative">
             <Input
-              type="text"
+              type="search"
               placeholder="Search markets..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-md border border-border bg-background focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="w-full pl-10"
               aria-label="Search markets"
             />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           </div>
 
           <div className="flex flex-wrap justify-center gap-2">
@@ -240,7 +262,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="flex justify-center mb-6">
+        <div className="flex gap-10 justify-center mb-10">
           <ToggleGroup
             type="single"
             value={sortOrder}
@@ -272,9 +294,43 @@ export default function HomePage() {
               Traders
             </ToggleGroupItem>
           </ToggleGroup>
+
+          <div className="flex justify-end">
+            <ToggleGroup
+              type="single"
+              value={selectedSource}
+              onValueChange={(value) => {
+                if (value) setSelectedSource(value);
+              }}
+              aria-label="Market Source Filter"
+              className="bg-muted p-1 rounded-md gap-3"
+            >
+              <ToggleGroupItem
+                value="All"
+                aria-label="All Markets"
+                className="px-3 py-1.5 text-xs sm:text-sm data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md"
+              >
+                All
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="Prophit"
+                aria-label="Prophit"
+                className="px-3 py-1.5 text-xs sm:text-sm data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md"
+              >
+                Prophit
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="External Markets"
+                aria-label="External Markets"
+                className="px-5 py-1.5 text-xs sm:text-sm data-[state=on]:bg-background data-[state=on]:shadow-sm rounded-md"
+              >
+                External
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
         </div>
 
-        <div className="min-h-[400px]">
+        <div className="min-h-[500px]">
           {isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {Array.from({ length: 9 }).map((_, index) => (
@@ -312,7 +368,9 @@ export default function HomePage() {
                   }}
                   liquidity={market.liquidityClob?.toFixed(2) ?? "0"}
                   timeRemaining={
-                    market.endDate ? formatTimeRemaining(market.endDate) : "N/A"
+                    market.expirationTime
+                      ? formatTimeRemaining(market.expirationTime)
+                      : "N/A"
                   }
                   category={market.derivedCategory || "Other"}
                   image={market.image}
