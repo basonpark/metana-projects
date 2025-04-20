@@ -10,7 +10,6 @@ import { /* MarketWithMetadata, */ MarketStatus, Outcome, CreateMarketParams } f
 /**
  * Custom hook to safely interact with the PredictionMarketFactory contract.
  * Handles checks for wallet connection, correct chain, and contract address availability.
- * Focused on reading factory data and creating new markets.
  */
 export const useMarketContractSafe = () => {
   const { address: accountAddress, isConnected } = useAccount();
