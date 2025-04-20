@@ -7,43 +7,51 @@ import { Search } from "lucide-react";
 import Link from "next/link";
 import { fetchActivePolymarketMarkets } from "@/services/gamma";
 import { formatTimeRemaining, categorizeMarket } from "@/lib/utils";
-import { PolymarketMarket } from "@/types/polymarket";
+import { PolymarketAPIMarket } from "@/types/market";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Define a type for combined market data
-interface CombinedMarket extends PolymarketMarket {
+interface CombinedMarket extends PolymarketAPIMarket {
   origin: "polymarket" | "prophit";
   derivedCategory?: string; // Keep derivedCategory optional
 }
 
 // Placeholder Prophit Markets Data
 const placeholderProphitMarkets: Omit<CombinedMarket, "derivedCategory">[] =
-  Array.from({ length: 10 }).map((_, i) => ({
-    id: `prophit-placeholder-${i + 1}`,
-    question: `Will Prophit Feature ${i + 1} be successful by Q${
-      (i % 4) + 1
-    } 2025?`,
-    slug: `prophit-feature-${i + 1}`,
-    description: `Placeholder description for Prophit market ${
-      i + 1
-    }. This market tracks the success of a key feature. Resolution source TBD.`,
-    outcomes: '["Yes", "No"]',
-    created_at: new Date(
-      Date.now() - (i + 1) * 24 * 60 * 60 * 1000
-    ).toISOString(),
-    endDate: new Date(
-      Date.now() + (30 - i) * 24 * 60 * 60 * 1000
-    ).toISOString(), // Ends in future
-    volume: Math.floor(Math.random() * 5000) + 100,
-    category: "Prophit", // Verify this is set
-    bestAsk: 0.5 + (Math.random() - 0.5) * 0.2, // Dummy odds around 50%
-    bestBid: 0.5 - (Math.random() - 0.5) * 0.2,
-    liquidityClob: Math.floor(Math.random() * 10000) + 500,
-    origin: "prophit",
-  }));
+  Array.from({ length: 10 }).map((_, i) => {
+    // Dates for conversion
+    const createdAtDate = new Date(Date.now() - (i + 1) * 24 * 60 * 60 * 1000);
+    const endDateDate = new Date(Date.now() + (30 - i) * 24 * 60 * 60 * 1000);
+
+    return {
+      // Fields from original placeholder structure
+      id: `prophit-placeholder-${i + 1}`,
+      question: `Will Prophit Feature ${i + 1} be successful by Q${
+        (i % 4) + 1
+      } 2025?`,
+      slug: `prophit-feature-${i + 1}`,
+      description: `Placeholder description for Prophit market ${
+        i + 1
+      }. This market tracks the success of a key feature. Resolution source TBD.`,
+      outcomes: ["Yes", "No"], // Keep outcomes required by PolymarketAPIMarket
+      volume: Math.floor(Math.random() * 5000) + 100,
+      category: "Prophit",
+      bestAsk: 0.5 + (Math.random() - 0.5) * 0.2,
+      bestBid: 0.5 - (Math.random() - 0.5) * 0.2, // Not strictly in PolymarketAPIMarket, but keep if used
+      liquidityClob: Math.floor(Math.random() * 10000) + 500,
+
+      // --- Fields added/modified to match CombinedMarket (extending PolymarketAPIMarket) ---
+      source: "polymarket" as const, // Required by PolymarketAPIMarket extension
+      creationTime: Math.floor(createdAtDate.getTime() / 1000), // Add creationTime (Unix seconds)
+      expirationTime: Math.floor(endDateDate.getTime() / 1000), // Add expirationTime (Unix seconds)
+
+      // Field from CombinedMarket definition itself
+      origin: "prophit" as const,
+    };
+  });
 
 const ITEMS_PER_PAGE = 30;
 
@@ -98,7 +106,7 @@ const getPaginationNumbers = (
 
 export default function MarketsPage() {
   const [polymarketApiMarkets, setPolymarketApiMarkets] = useState<
-    PolymarketMarket[]
+    PolymarketAPIMarket[]
   >([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -114,7 +122,8 @@ export default function MarketsPage() {
       setError(null);
       try {
         console.log("Fetching external (Polymarket) markets...");
-        const fetchedMarkets = await fetchActivePolymarketMarkets();
+        const fetchedMarkets: PolymarketAPIMarket[] =
+          await fetchActivePolymarketMarkets();
         console.log(`Fetched ${fetchedMarkets.length} external markets.`);
         setPolymarketApiMarkets(fetchedMarkets || []);
       } catch (err) {
@@ -197,8 +206,12 @@ export default function MarketsPage() {
             return participantsB - participantsA;
           case "timeRemaining":
           default:
-            const timeA = a.endDate ? new Date(a.endDate).getTime() : Infinity;
-            const timeB = b.endDate ? new Date(b.endDate).getTime() : Infinity;
+            const timeA = a.expirationTime
+              ? a.expirationTime * 1000
+              : Infinity;
+            const timeB = b.expirationTime
+              ? b.expirationTime * 1000
+              : Infinity;
             const diffA = timeA - now;
             const diffB = timeB - now;
             if (diffA <= 0 && diffB <= 0) return timeB - timeA;
@@ -428,8 +441,8 @@ export default function MarketsPage() {
                       }}
                       liquidity={market.liquidityClob?.toFixed(2) ?? "0"}
                       timeRemaining={
-                        market.endDate
-                          ? formatTimeRemaining(market.endDate)
+                        market.expirationTime
+                          ? formatTimeRemaining(market.expirationTime * 1000)
                           : "N/A"
                       }
                       category={market.derivedCategory || "Other"}
