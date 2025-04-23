@@ -38,9 +38,10 @@ export interface BaseMarket {
   id: string; // Use string for consistency (Prophit ID might be BigNumber initially)
   question: string;
   category?: string;
+  derivedCategory: string; // Add derived category here
   image?: string; // Optional image URL
-  creationTime: number; // Unix timestamp (seconds)
-  expirationTime: number; // Unix timestamp (seconds) when trading stops
+  creationTime?: number; // Unix timestamp (seconds)
+  expirationTime?: number; // Unix timestamp (seconds) when trading stops
   source: 'prophit' | 'polymarket'; // Discriminator field
 }
 
@@ -78,7 +79,7 @@ export interface ProphitMarket extends BaseMarket {
  * Represents a prediction market fetched from the Polymarket Gamma API.
  */
 export interface PolymarketAPIMarket extends BaseMarket {
-  source: 'polymarket';
+  source: 'polymarket' | 'prophit';
   slug?: string;
   outcomes: string[]; // Parsed from JSON string like "[\"Yes\", \"No\"]"
   volume: number; // Maybe use volumeClob/Amm?
@@ -87,7 +88,39 @@ export interface PolymarketAPIMarket extends BaseMarket {
   liquidityClob?: number;
   bestBid?: number; // Price for "No" (0-1)
   bestAsk?: number; // Price for "Yes" (0-1)
+  startDate?: string;
+  endDate?: string;
+  url?: string; // Optional url
+  marketType?: 'categorical' | 'scalar'; // Optional marketType
+  lastPrice?: number; // Optional lastPrice
+  state: 'open' | 'closed' | 'resolved';
+  tokens?: { id: string; name: string; price: number; color: string }[];
+  liquidity?: number;
   // 'endDate' from API could potentially map to 'settlementTime' if needed
+  id: `0x${string}`; // Ensure ID matches the address type
+}
+
+// --- Unified Display Interface ---
+
+/**
+ * Represents the common structure needed to display any market in the UI.
+ */
+export interface DisplayMarket {
+  id: string; // Market address (0x...) or Polymarket ID
+  question: string;
+  image: string;
+  category: string; // Original category or derived category
+  derivedCategory?: string; // Keep for consistency
+  source: 'polymarket' | 'prophit';
+  expirationTime?: number; // Unix timestamp (optional for display flexibility)
+  endDate?: string; // Polymarket's end date string (optional)
+  bestAsk?: number; // Price for 'Yes' (0-1, optional)
+  bestBid?: number; // Price for 'No' (0-1, optional)
+  lastPrice?: number; // Last trade price (optional)
+  slug?: string; // Polymarket specific (optional)
+  url?: string; // Polymarket specific (optional)
+  liquidity?: number; // Optional liquidity figure for sorting/filtering
+  // Add any other common fields required by MarketCard, e.g., volume?
 }
 
 // --- Union Type and Type Guards ---
@@ -108,5 +141,5 @@ export function isProphitMarket(market: Market): market is ProphitMarket {
  * Type guard to check if a market is a PolymarketAPIMarket.
  */
 export function isPolymarketMarket(market: Market): market is PolymarketAPIMarket {
-  return market.source === 'polymarket';
+  return market.source === 'polymarket' || market.source === 'prophit';
 }
