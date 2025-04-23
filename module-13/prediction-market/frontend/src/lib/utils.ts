@@ -36,23 +36,23 @@ export function formatTimeRemaining(endDateStringOrTimestamp: string | number): 
 /**
  * Categorizes a market based on keywords in its question or slug.
  * Uses the market's predefined category if available.
- * @param market - The PolymarketAPIMarket object.
+ * @param marketData - The market data object with question and optional category.
  * @returns A category string.
  */
-export function categorizeMarket(market: PolymarketAPIMarket): string {
+export function categorizeMarket(marketData: { question: string; category?: string }): string {
   // Prioritize the category provided by the API if it exists and isn't empty/generic
-  if (market.category && market.category.trim() !== '' && market.category.toLowerCase() !== 'other') {
+  if (marketData.category && marketData.category.trim() !== '' && marketData.category.toLowerCase() !== 'other') {
     // Simple pluralization check - very basic
-    if (market.category.toLowerCase() === 'crypto') return 'Crypto';
-    if (market.category.toLowerCase() === 'politics') return 'Politics';
-     if (market.category.toLowerCase() === 'sports') return 'Sports';
+    if (marketData.category.toLowerCase() === 'crypto') return 'Crypto';
+    if (marketData.category.toLowerCase() === 'politics') return 'Politics';
+     if (marketData.category.toLowerCase() === 'sports') return 'Sports';
     // Add more direct mappings if needed
-    return market.category; // Return the API's category directly
+    return marketData.category; // Return the API's category directly
   }
 
   // Fallback to keyword analysis if no suitable category from API
-  // Safely handle potentially undefined slug using nullish coalescing
-  const text = `${market.question} ${market.slug ?? ''}`.toLowerCase();
+  // Use question for keyword matching
+  const text = marketData.question.toLowerCase();
 
   // Expanded keywords for better matching
   const categories: { [key: string]: RegExp } = {

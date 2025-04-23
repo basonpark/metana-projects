@@ -76,7 +76,7 @@ export interface CreateMarketParams {
   dataFeedId: string;
   threshold: number;
   category: string;
-  fee: number;
+  fee: bigint; // Fee in basis points (e.g., 100n = 1%)
 }
 
 /**
@@ -117,4 +117,26 @@ export interface ClaimableReward {
   marketQuestion: string;
   amount: string;
   outcome: Outcome;
-} 
+}
+
+/**
+ * Type for the data returned by getMarketDetails
+ * Adjust fields based on what your PredictionMarket contract's view function actually returns
+ */
+export interface MarketInfo {
+  question: string;
+  expirationTime: bigint;
+  status: MarketStatus; // Use the existing enum
+  category: string;
+  dataFeedId: string; // Assuming bytes32 is represented as hex string
+  threshold: bigint;
+  fee: bigint;
+  image?: string; // Optional image URL
+  // Add other fields returned by your contract's info function, e.g.:
+  // outcomeTokenAddresses?: [`0x${string}`, `0x${string}`];
+  // currentOdds?: [bigint, bigint]; 
+}
+
+// Example structure for a Market object potentially including metadata
+// export interface MarketWithMetadata extends MarketInfo {
+//   marketAddress: `0x${string}`;

@@ -6,10 +6,19 @@ import { useMarketContractSafe } from "@/hooks/useMarketContractSafe";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Info, Clock, DollarSign, Calendar } from "lucide-react";
+import { toast } from "sonner";
 
 export default function CreateMarketPage() {
   const router = useRouter();
-  const { createMarket, getCategories } = useMarketContractSafe();
+  const {
+    createMarket,
+    getCategories,
+    isReady,
+    hash,
+    isConfirmed,
+    writeError,
+    newMarketAddress, // Get the new address from the hook
+  } = useMarketContractSafe();
 
   const [formState, setFormState] = useState({
     title: "",
@@ -19,7 +28,7 @@ export default function CreateMarketPage() {
     dataFeedId: "",
     targetPrice: "",
     initialLiquidity: "0.1",
-    fee: "2",
+    fee: "200",
     outcomes: ["Yes", "No"],
   });
 
@@ -104,7 +113,7 @@ export default function CreateMarketPage() {
     }
 
     const fee = parseFloat(formState.fee);
-    if (isNaN(fee) || fee < 0 || fee > 5) {
+    if (isNaN(fee) || fee < 0 || fee > 500) {
       errors.fee = "Fee must be between 0% and 5%";
     }
 
@@ -137,31 +146,31 @@ export default function CreateMarketPage() {
       const finalCategory =
         formState.category === "Custom" ? customCategory : formState.category;
 
-      const marketParams = {
+      const params = {
         question: formState.title,
         category: finalCategory,
-        expirationTime: resolutionTimestamp,
-        dataFeedId: formState.dataFeedId || "0", // Default to 0 if not provided
-        threshold: parseFloat(formState.targetPrice) || 0, // Map targetPrice to threshold
-        fee: parseFloat(formState.fee) / 100, // Convert to decimal
+        expirationTime: resolutionTimestamp, // Keep as number, hook handles BigInt conversion
+        // Use bytes32 zero if empty, otherwise use the validated input
+        dataFeedId: (formState.dataFeedId && formState.dataFeedId.startsWith('0x') && formState.dataFeedId.length === 66)
+                      ? (formState.dataFeedId as `0x${string}`)
+                      : '0x0000000000000000000000000000000000000000000000000000000000000000',
+        threshold: parseFloat(formState.targetPrice) || 0, // Keep as number, hook handles BigInt conversion
+        fee: BigInt(parseFloat(formState.fee)), // Ensure fee is BigInt
       };
 
-      const newMarketAddress = await createMarket(marketParams);
+      console.log("Submitting market creation with params:", JSON.stringify(params, (key, value) =>
+        typeof value === 'bigint' ? value.toString() + 'n' : value // Convert BigInt for logging
+      , 2));
 
-      if (newMarketAddress) {
-        // Navigate to the new market with type parameter
-        console.log(`Market created: ${newMarketAddress}, redirecting...`);
-        router.push(`/markets/${newMarketAddress}?type=prophit`);
-      } else {
-        // Handle case where address is unexpectedly null/undefined
-        throw new Error("Failed to create market or retrieve address");
-      }
+      // Call createMarket, but don't expect a return value here.
+      // Success/failure/redirect logic will be handled by useEffect watching hook state.
+      await createMarket(params);
+
+      // Log that submission was attempted. Actual success depends on hook state.
+      console.log("[handleSubmit] Market creation transaction submitted via hook.");
     } catch (error) {
       console.error("Error creating market:", error);
-      setFormErrors({
-        submit:
-          "Failed to create market. Please check your inputs and try again.",
-      });
+      // Error handling will be moved to useEffect watching `writeError`
     } finally {
       setIsSubmitting(false);
     }
@@ -193,6 +202,39 @@ export default function CreateMarketPage() {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const minDate = tomorrow.toISOString().split("T")[0];
+
+  // Effect to handle successful market creation confirmation
+  useEffect(() => {
+    if (isConfirmed && hash) {
+      console.log(`[CreateMarketPage] Market creation confirmed! Tx Hash: ${hash}`);
+      toast.success(`Market creation successful! Tx Hash: ${hash.substring(0, 10)}...`);
+      // Ideally, redirect to the newly created market page if we could get the address from events.
+      // For now, redirecting to home or a generic success page might be better.
+      router.push('/'); // Redirect to homepage after success
+    }
+  }, [isConfirmed, hash, router]);
+
+  // Effect to handle errors during market creation submission
+  useEffect(() => {
+    if (writeError) {
+      console.error('[CreateMarketPage] Market creation submission error from hook:', writeError);
+      // Use .message directly, as shortMessage might not always exist on the error type
+      const errorMessage = writeError.message || 'Transaction failed or was rejected.';
+      toast.error(`Market Creation Failed: ${errorMessage}`);
+      // Reset error state in hook if possible, or handle appropriately
+    }
+  }, [writeError]);
+
+  // Effect to redirect when a new market address is available
+  useEffect(() => {
+    if (newMarketAddress) {
+      console.log(`Redirecting to new market page: /markets/${newMarketAddress}`);
+      // Clear form state or show success message before redirecting?
+      // Maybe reset form fields here?
+      // setFormData({ ...initialFormData }); 
+      router.push(`/markets/${newMarketAddress}`);
+    }
+  }, [newMarketAddress, router]); // Run when newMarketAddress changes
 
   return (
     <RootLayout>
@@ -412,6 +454,11 @@ export default function CreateMarketPage() {
                       placeholder="For automated price resolution (e.g. cryptocurrency prices)"
                       className="w-full p-3 rounded-md border border-border bg-background"
                     />
+                    {formErrors.dataFeedId && (
+                      <p className="text-destructive text-sm mt-1">
+                        {formErrors.dataFeedId}
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground mt-1">
                       Use this for automated market resolution based on
                       Chainlink data feeds
@@ -465,38 +512,6 @@ export default function CreateMarketPage() {
                     )}
                     <p className="text-xs text-muted-foreground mt-1">
                       Amount of ETH to seed the market with (minimum 0.01 ETH)
-                    </p>
-                  </div>
-
-                  {/* Market Fee */}
-                  <div>
-                    <label className="block mb-2 text-sm font-medium">
-                      Market Fee (%)
-                    </label>
-                    <div className="flex items-center">
-                      <input
-                        type="number"
-                        name="fee"
-                        value={formState.fee}
-                        onChange={handleInputChange}
-                        step="0.1"
-                        min="0"
-                        max="5"
-                        className={`w-full p-3 rounded-md border ${
-                          formErrors.fee
-                            ? "border-destructive"
-                            : "border-border"
-                        } bg-background`}
-                      />
-                      <span className="ml-2">%</span>
-                    </div>
-                    {formErrors.fee && (
-                      <p className="text-destructive text-sm mt-1">
-                        {formErrors.fee}
-                      </p>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Fee you'll earn from each trade (0-5%)
                     </p>
                   </div>
                 </div>
@@ -579,6 +594,10 @@ export default function CreateMarketPage() {
             </li>
           </ul>
         </div>
+
+        {/* Optionally display confirmation/redirect status */}
+        {isConfirmed && !newMarketAddress && <p className="text-center mt-4 text-yellow-600">Transaction confirmed, waiting for event...</p>}
+        {isConfirmed && newMarketAddress && <p className="text-center mt-4 text-green-600">Market created! Redirecting...</p>}
       </div>
     </RootLayout>
   );
