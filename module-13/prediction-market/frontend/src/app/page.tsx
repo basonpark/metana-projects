@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { RootLayout } from "@/components/layout/RootLayout";
 import { PredictionMarketCard } from "@/components/ui/prediction-market-card";
 import Link from "next/link";
-import { PolymarketAPIMarket, DisplayMarket, MarketStatus } from "@/types/market"; // Import DisplayMarket and MarketStatus
+import { PolymarketAPIMarket, DisplayMarket, MarketStatus } from "@/types/market"; 
 import { fetchActivePolymarketMarkets } from "@/services/gamma";
 import { ProphitHero } from "@/components/ProphitHero";
 import { categorizeMarket, formatTimeRemaining } from "@/lib/utils";
@@ -14,8 +14,8 @@ import { Search } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMarketContractSafe } from "@/hooks/useMarketContractSafe";
-import { MarketInfo } from "@/types/contracts"; // Import MarketInfo
-import { useDebounce } from "../hooks/useDebounce"; // Corrected import path
+import { MarketInfo } from "@/types/contracts"; 
+import { useDebounce } from "../hooks/useDebounce"; 
 
 const ITEMS_PER_PAGE = 30;
 const getPaginationNumbers = (
@@ -77,33 +77,27 @@ export default function HomePage() {
   const [sortOrder, setSortOrder] = useState<string>("timeRemaining");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Use the contract hook
   const {
     getMarkets: getProphitMarketAddresses,
     getMarketDetails,
     isReady: contractIsReady,
   } = useMarketContractSafe();
 
-  // Store markets by source
   const [externalMarkets, setExternalMarkets] = useState<DisplayMarket[]>([]);
   const [prophitMarkets, setProphitMarkets] = useState<DisplayMarket[]>([]);
 
   const loadMarketData = useCallback(async () => {
-    console.log("Homepage: Fetching market data...");
     setIsLoading(true);
     setError(null);
     try {
       const currentTimeSeconds = Math.floor(Date.now() / 1000);
 
-      // Fetch and process Polymarket data
       const rawExternalMarkets = await fetchActivePolymarketMarkets();
       const activeExternalMarkets = (rawExternalMarkets || [])
         .map((market: PolymarketAPIMarket) => {
-          // Prioritize endDate string, fallback to expirationTime
           const dateSource = market.endDate ?? market.expirationTime;
           let expirationTimestampSeconds: number | undefined = undefined;
 
-          // Parse the date source into a numeric timestamp (seconds)
           if (typeof dateSource === 'string') {
             const parsedDate = new Date(dateSource);
             if (!isNaN(parsedDate.getTime())) {
@@ -113,19 +107,16 @@ export default function HomePage() {
             expirationTimestampSeconds = dateSource;
           }
 
-          // Prepare input for categorization
           const categoryInput = {
             question: market.question,
             category: market.category ?? "",
           };
-          // Calculate prices (ensure yesPrice exists for noPrice calculation)
-          const yesPrice = market.bestAsk; // Use bestAsk as primary 'yes' price
+          const yesPrice = market.bestAsk; 
           const noPrice = yesPrice !== undefined ? 1 - yesPrice : undefined;
 
-          // Status calculation using the *parsed* numeric timestamp
           const status = expirationTimestampSeconds !== undefined && expirationTimestampSeconds > currentTimeSeconds
                             ? MarketStatus.Open
-                            : MarketStatus.Locked; // Default to Locked if parsing failed or date passed
+                            : MarketStatus.Locked; 
 
           return {
             id: market.id,
@@ -133,37 +124,28 @@ export default function HomePage() {
             image: market.image,
             category: market.category,
             derivedCategory: categorizeMarket(categoryInput),
-            expirationTime: expirationTimestampSeconds, // Store the PARSED numeric timestamp
+            expirationTime: expirationTimestampSeconds, 
             volume: market.volume,
-            liquidity: market.liquidityClob, // Changed from market.liquidity
-            yesPrice: yesPrice, // Use calculated yesPrice
-            noPrice: noPrice, // Use calculated noPrice
+            liquidity: market.liquidityClob, 
+            yesPrice: yesPrice, 
+            noPrice: noPrice, 
             bestAsk: market.bestAsk,
-            status: status, // Use calculated status
+            status: status, 
             source: "polymarket",
           } as DisplayMarket;
         })
         .filter((market) => {
-          // Filter using the already parsed numeric expirationTime
           const isActive = market.expirationTime !== undefined && market.expirationTime > currentTimeSeconds;
           return isActive;
         });
 
-      console.log(`[Debug] Active Polymarket markets count: ${activeExternalMarkets.length}`);
-
-      // Fetch and process Prophit data
-      console.log("Homepage: Fetching Prophit market data...");
-      // Fetch addresses first (provide arguments)
-      const internalMarketAddresses = await getProphitMarketAddresses(0, 100); // Added arguments
+      const internalMarketAddresses = await getProphitMarketAddresses(0, 100); 
       let activeInternalMarkets: DisplayMarket[] = [];
 
       if (internalMarketAddresses && internalMarketAddresses.length > 0) {
-        console.log(`Homepage: Found ${internalMarketAddresses.length} Prophit market addresses.`);
-        // Fetch details for each address
         const prophitDetailsPromises = internalMarketAddresses.map(
           async (address) => {
             try {
-              // Call getMarketDetails for EACH address
               const details: MarketInfo | null = await getMarketDetails(address);
               if (details) {
                 const categoryInput = {
@@ -178,11 +160,11 @@ export default function HomePage() {
                   category: details.category,
                   derivedCategory: categorizeMarket(categoryInput),
                   expirationTime: expirationTimestampSeconds,
-                  volume: 0, // Placeholder
-                  liquidity: 0, // Placeholder
-                  yesPrice: 0.5, // Placeholder
-                  noPrice: 0.5, // Placeholder
-                  bestAsk: 0.5, // Placeholder
+                  volume: 0, 
+                  liquidity: 0, 
+                  yesPrice: 0.5, 
+                  noPrice: 0.5, 
+                  bestAsk: 0.5, 
                   status: details.status,
                   source: "prophit",
                 } as DisplayMarket;
@@ -190,37 +172,30 @@ export default function HomePage() {
             } catch (err) {
               console.error(`Error fetching details for Prophit market ${address}:`, err);
             }
-            return null; // Return null if fetch fails or no details
+            return null; 
           }
         );
-        // Wait for all detail fetches and filter out nulls
         const resolvedProphitDetails = (await Promise.all(prophitDetailsPromises))
           .filter((market): market is DisplayMarket => market !== null);
 
-        // Filter for active markets based on time and status
-        activeInternalMarkets = resolvedProphitDetails.filter((market: DisplayMarket) => { // Ensure DisplayMarket type is correct
+        activeInternalMarkets = resolvedProphitDetails.filter((market: DisplayMarket) => { 
           const expirationNumber = Number(market.expirationTime);
           const isActiveTime = !isNaN(expirationNumber) && expirationNumber > currentTimeSeconds;
-          // Access status property, assuming it exists on DisplayMarket
           return isActiveTime && market.status === MarketStatus.Open;
         });
       } else {
         console.log("Homepage: No Prophit market addresses found or contract functions unavailable.");
       }
 
-      console.log(`[Debug] Active Prophit markets count: ${activeInternalMarkets.length}`);
-
-      // Combine and set state
       const combinedMarkets = [...activeExternalMarkets, ...activeInternalMarkets];
       setAllMarkets(combinedMarkets);
 
-    } catch (error: any) { // Type error as any
+    } catch (error: any) { 
       console.error("Error loading market data:", error);
       setError(error.message || "Failed to load market data");
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
-      console.log("Homepage: Market data fetching finished.");
     }
   }, []);
 
@@ -234,20 +209,14 @@ export default function HomePage() {
       10
     );
     const intervalId = setInterval(() => {
-      console.log(`Homepage: Polling for fresh data...`);
       loadMarketData();
     }, refreshInterval);
     return () => clearInterval(intervalId);
   }, []);
 
   const filteredMarkets = useMemo(() => {
-    // --- Debug Log at start of useMemo ---
-    console.log('[Debug useMemo] Start - allMarkets:', allMarkets);
-    // --- End Debug Log ---
-
     let markets = allMarkets;
 
-    // Filter by search term
     if (debouncedSearchTerm) {
       markets = markets.filter((market) =>
         market.question
@@ -256,50 +225,34 @@ export default function HomePage() {
       );
     }
 
-    // Filter by category
     if (selectedCategory !== "All") {
       markets = markets.filter(
         (market) => (market.derivedCategory || market.category) === selectedCategory
       );
     }
 
-    // Filter by source
     if (selectedSource !== "All") {
-      // Match source case-insensitively for robustness
       markets = markets.filter((market) => market.source?.toLowerCase() === selectedSource.toLowerCase());
     }
 
-    // --- Sort the filtered markets ---
-    // Clone the array before sorting to avoid mutating the cached result directly
     const sortedMarkets = [...markets].sort((a, b) => {
-      // Default to time remaining if sortOrder is invalid or 'traders'
       const sortCriteria = ['timeRemaining', 'liquidity'].includes(sortOrder) ? sortOrder : 'timeRemaining';
 
       if (sortCriteria === 'timeRemaining') {
-        // Ending Soon: Sort by expirationTime ASCENDING
-        // Treat undefined as furthest away (Infinity)
         const timeA = a.expirationTime ?? Infinity;
         const timeB = b.expirationTime ?? Infinity;
         return timeA - timeB;
       } else if (sortCriteria === 'liquidity') {
-        // Liquidity: Sort by liquidity DESCENDING
-        // Treat undefined/null as lowest liquidity (-Infinity)
         const liqA = a.liquidity ?? -Infinity;
         const liqB = b.liquidity ?? -Infinity;
         return liqB - liqA;
       }
-      // No sorting applied for 'traders' as data is unavailable
       return 0;
     });
 
-    // --- Debug Log at end of useMemo ---
-    console.log('[Debug useMemo] End - final filtered/sorted markets:', sortedMarkets);
-    // --- End Debug Log ---
-
     return sortedMarkets;
-  }, [allMarkets, debouncedSearchTerm, selectedCategory, selectedSource, sortOrder]); // Add sortOrder dependency
+  }, [allMarkets, debouncedSearchTerm, selectedCategory, selectedSource, sortOrder]);
 
-  // Calculate total pages based on filtered markets
   const totalPages = Math.ceil(filteredMarkets.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
@@ -468,34 +421,26 @@ export default function HomePage() {
               </div>
             ) : paginatedMarkets.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {paginatedMarkets.map((market) => {
-                  // Calculate timeRemaining and log values for debugging
-                  const timeRemainingStr = market.expirationTime
-                                           ? formatTimeRemaining(market.expirationTime)
-                                           : "N/A";
-                  console.log(
-                    `[Render] Market ID: ${market.id}, Exp Time (s): ${market.expirationTime}, ` +
-                    `Formatted Time: ${timeRemainingStr}, Status: ${MarketStatus[market.status ?? MarketStatus.Locked]}`
-                  );
-
-                  return (
-                   <PredictionMarketCard
-                     key={`${market.source}-${market.id}`}
-                     id={market.id}
-                     title={market.question ?? "N/A"}
-                     odds={{
-                       // Use bestAsk or the placeholder 0.5
-                       yes: Math.round((market.bestAsk ?? 0.5) * 100),
-                       no: 100 - Math.round((market.bestAsk ?? 0.5) * 100),
-                     }}
-                     liquidity={market.liquidity?.toFixed(2) ?? "0"}
-                     timeRemaining={timeRemainingStr} // Use the pre-calculated string
-                     category={market.derivedCategory || market.category || "Other"} // Use derived, then original, then fallback
-                     image={market.image}
-                     status={market.status ?? MarketStatus.Locked} // Pass market.status with fallback to MarketStatus.Locked
-                   />
-                  );
-                })}
+                {paginatedMarkets.map((market) => (
+                  <PredictionMarketCard
+                    key={`${market.source}-${market.id}`}
+                    id={market.id}
+                    title={market.question ?? "N/A"}
+                    odds={{
+                      yes: Math.round((market.bestAsk ?? 0.5) * 100),
+                      no: 100 - Math.round((market.bestAsk ?? 0.5) * 100),
+                    }}
+                    liquidity={market.liquidity?.toFixed(2) ?? "0"}
+                    timeRemaining={
+                      market.expirationTime
+                        ? formatTimeRemaining(market.expirationTime)
+                        : "N/A"
+                    }
+                    category={market.derivedCategory || market.category || "Other"} 
+                    image={market.image}
+                    status={market.status ?? MarketStatus.Locked} 
+                  />
+                ))}
               </div>
             ) : (
               <div className="text-center py-16 text-muted-foreground">

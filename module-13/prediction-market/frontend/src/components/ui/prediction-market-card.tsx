@@ -40,13 +40,6 @@ export function PredictionMarketCard({
   status,
   props,
 }: PredictionMarketCardProps) {
-  // Log received props
-  console.log(
-    `[PredictionMarketCard Props] ID: ${id}, Title: ${title.substring(
-      0,
-      20
-    )}..., Status: ${MarketStatus[status]}, TimeRemaining: ${timeRemaining}, Liquidity: ${liquidity}`
-  );
 
   // Format liquidity display
   const formattedLiquidity =
@@ -109,7 +102,7 @@ export function PredictionMarketCard({
           {/* Add Status Badge */}
           <Badge
             variant={status === MarketStatus.Open ? "secondary" : "outline"}
-            className={`ml-2 text-xs ${
+            className={`ml-2 text-xs ${ // Status display
               status === MarketStatus.Open
                 ? "bg-green-100 text-green-800 border-green-300"
                 : "bg-gray-100 text-gray-800 border-gray-300"
