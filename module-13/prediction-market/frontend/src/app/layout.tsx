@@ -20,6 +20,7 @@ export const metadata: Metadata = {
   icons: {
     icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
   },
+  themeColor: "#000000",
 };
 
 export default function RootLayout({
