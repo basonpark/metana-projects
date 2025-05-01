@@ -102,8 +102,6 @@ export async function fetchActivePolymarketMarkets(): Promise<PolymarketAPIMarke
   let offset = 0;
   let hasMore = true;
 
-  console.log(`Starting fetch loop to get up to ${MAX_MARKETS_TO_FETCH} active binary markets...`);
-
   while (allMappedMarkets.length < MAX_MARKETS_TO_FETCH && hasMore) {
     const currentLimit = Math.min(LIMIT_PER_PAGE, MAX_MARKETS_TO_FETCH - allMappedMarkets.length);
     const params = new URLSearchParams({
