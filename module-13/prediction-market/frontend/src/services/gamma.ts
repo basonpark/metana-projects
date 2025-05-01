@@ -2,7 +2,7 @@ import { PolymarketAPIMarket } from '@/types/market';
 
 // Use the proxied path via next.config.js rewrites
 const GAMMA_POLYMARKET_API_ENDPOINT = '/api/gamma/markets';
-const MAX_MARKETS_TO_FETCH = 500; // Changed from 1000 to 500
+const MAX_MARKETS_TO_FETCH = 400; // Reduced max markets to fetch
 const LIMIT_PER_PAGE = 100; // Max markets per API request (adjust based on API capabilities)
 
 /**
@@ -239,5 +239,54 @@ export async function fetchMarketById(
   } catch (error) {
     console.error(`Error fetching market ${marketId} data:`, error);
     return null; // Return null on error
+  }
+}
+
+/**
+ * Fetch details for a single Polymarket market by ID
+ */
+export async function fetchPolymarketMarketById(id: string): Promise<PolymarketAPIMarket | null> {
+  console.log(`[gamma.ts] fetchPolymarketMarketById: Fetching market with ID: ${id}`);
+  if (!id) {
+    console.error("[gamma.ts] fetchPolymarketMarketById: marketId is empty or null.");
+    return null;
+  }
+  // Construct the URL for fetching a single market by ID
+  const urlString = `${GAMMA_POLYMARKET_API_ENDPOINT}/${id}`;
+  console.log(`Fetching single market: ${id} from ${urlString}`);
+
+  try {
+    const response = await fetch(urlString, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      // Handle non-2xx responses (like 404 Not Found)
+      if (response.status === 404) {
+        console.warn(`Market with ID ${id} not found.`);
+        return null;
+      } else {
+        throw new Error(`API request failed with status ${response.status}: ${await response.text()}`);
+      }
+    }
+
+    const rawMarket: RawPolymarketMarket = await response.json();
+
+    // Check if the response is valid (e.g., has an ID)
+    if (!rawMarket || !rawMarket.id) {
+      console.warn(`Invalid data received for market ID ${id}.`);
+      return null;
+    }
+
+    // Map the raw data to the desired structure
+    return mapRawMarketToPolymarket(rawMarket);
+
+  } catch (error) {
+    console.error(`Error fetching market details for ID ${id}:`, error);
+    // Optionally re-throw or handle specific errors as needed
+    return null; // Return null on any fetch/processing error
   }
 }
