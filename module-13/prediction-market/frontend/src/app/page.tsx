@@ -90,9 +90,14 @@ export default function HomePage() {
     setIsLoading(true);
     setError(null);
     try {
+      // Fetch Polymarket markets and Prophit market addresses concurrently
       const currentTimeSeconds = Math.floor(Date.now() / 1000);
+      const [rawExternalMarkets, internalMarketAddresses] = await Promise.all([
+        fetchActivePolymarketMarkets(), // Fetch Polymarket data
+        getProphitMarketAddresses(0, 30) // Fetch Prophit addresses with reduced limit
+      ]);
 
-      const rawExternalMarkets = await fetchActivePolymarketMarkets();
+      // Process Polymarket data
       const activeExternalMarkets = (rawExternalMarkets || [])
         .map((market: PolymarketAPIMarket) => {
           const dateSource = market.endDate ?? market.expirationTime;
@@ -139,7 +144,6 @@ export default function HomePage() {
           return isActive;
         });
 
-      const internalMarketAddresses = await getProphitMarketAddresses(0, 100); 
       let activeInternalMarkets: DisplayMarket[] = [];
 
       if (internalMarketAddresses && internalMarketAddresses.length > 0) {
@@ -178,7 +182,7 @@ export default function HomePage() {
         const resolvedProphitDetails = (await Promise.all(prophitDetailsPromises))
           .filter((market): market is DisplayMarket => market !== null);
 
-        activeInternalMarkets = resolvedProphitDetails.filter((market: DisplayMarket) => { 
+        activeInternalMarkets = resolvedProphitDetails.filter((market: DisplayMarket) => {
           const expirationNumber = Number(market.expirationTime);
           const isActiveTime = !isNaN(expirationNumber) && expirationNumber > currentTimeSeconds;
           return isActiveTime && market.status === MarketStatus.Open;
@@ -268,6 +272,18 @@ export default function HomePage() {
     }
   };
 
+  const CATEGORIES: string[] = useMemo(() => {
+    const categoriesFromMarkets = allMarkets
+      .map((market) => market.derivedCategory || market.category)
+      .filter((category): category is string => !!category && category.trim() !== '');
+    const uniqueCategories = Array.from(new Set(categoriesFromMarkets));
+    return ['All', ...uniqueCategories.sort()];
+  }, [allMarkets]);
+
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+  };
+
   return (
     <RootLayout>
       <ProphitHero />
@@ -289,38 +305,22 @@ export default function HomePage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             </div>
 
-            <div className="flex flex-wrap justify-center gap-2">
-              {!isLoading && filteredMarkets.length > 0 ? (
-                Array.from(
-                  new Set(filteredMarkets.map((m) => m.derivedCategory || m.category))
-                ).map((category) => (
-                  <Button
-                    key={category}
-                    variant={
-                      selectedCategory === category ? "default" : "outline"
-                    }
-                    size="sm"
-                    onClick={() => setSelectedCategory(category)}
-                    className={`transition-colors duration-150 ${
-                      selectedCategory === category
-                        ? "font-semibold"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    {category}
-                  </Button>
-                ))
-              ) : isLoading ? (
-                <>
-                  <Skeleton className="h-8 w-20 rounded-md" />
-                  <Skeleton className="h-8 w-24 rounded-md" />
-                  <Skeleton className="h-8 w-16 rounded-md" />
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No categories found.
-                </p>
-              )}
+            <div className="flex flex-wrap gap-2 mb-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+              {CATEGORIES.map((category) => (
+                <Button
+                  key={`category-${category}`}
+                  variant={selectedCategory === category ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleCategoryChange(category)}
+                  className={`transition-colors duration-150 ${
+                    selectedCategory === category
+                      ? "font-semibold"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {category}
+                </Button>
+              ))}
             </div>
           </div>
 
