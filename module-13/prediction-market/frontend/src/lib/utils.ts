@@ -9,12 +9,12 @@ export function cn(...inputs: ClassValue[]) {
 
 /**
  * Formats an ISO date string or timestamp number into a human-readable time remaining string.
- * @param endDateStringOrTimestamp - The end date as an ISO string or Unix timestamp (in milliseconds).
+ * @param expirationTimestampSeconds - Unix timestamp (seconds).
  * @returns A string like "Ended", "5 days remaining", "1 hour remaining", etc.
  */
-export function formatTimeRemaining(endDateStringOrTimestamp: string | number): string {
+export function formatTimeRemaining(expirationTimestampSeconds: number): string {
   const now = new Date();
-  const end = new Date(endDateStringOrTimestamp);
+  const end = new Date(expirationTimestampSeconds * 1000); // Convert seconds to ms
   const diff = end.getTime() - now.getTime();
 
   if (diff <= 0) {
@@ -36,28 +36,22 @@ export function formatTimeRemaining(endDateStringOrTimestamp: string | number): 
 /**
  * Categorizes a market based on keywords in its question or slug.
  * Uses the market's predefined category if available.
- * @param market - The PolymarketAPIMarket object.
+ * @param marketData - Object with question and optional category.
  * @returns A category string.
  */
-export function categorizeMarket(market: PolymarketAPIMarket): string {
-  // Prioritize the category provided by the API if it exists and isn't empty/generic
-  if (market.category && market.category.trim() !== '' && market.category.toLowerCase() !== 'other') {
-    // Simple pluralization check - very basic
-    if (market.category.toLowerCase() === 'crypto') return 'Crypto';
-    if (market.category.toLowerCase() === 'politics') return 'Politics';
-     if (market.category.toLowerCase() === 'sports') return 'Sports';
-    // Add more direct mappings if needed
-    return market.category; // Return the API's category directly
+export function categorizeMarket(marketData: { question: string; category?: string }): string {
+  if (marketData.category && marketData.category.trim() !== '' && marketData.category.toLowerCase() !== 'other') {
+    if (marketData.category.toLowerCase() === 'crypto') return 'Crypto';
+    if (marketData.category.toLowerCase() === 'politics') return 'Politics';
+    if (marketData.category.toLowerCase() === 'sports') return 'Sports';
+    return marketData.category; // Return the API's category directly
   }
 
-  // Fallback to keyword analysis if no suitable category from API
-  // Safely handle potentially undefined slug using nullish coalescing
-  const text = `${market.question} ${market.slug ?? ''}`.toLowerCase();
+  const text = marketData.question.toLowerCase();
 
-  // Expanded keywords for better matching
   const categories: { [key: string]: RegExp } = {
     'Crypto': /(bitcoin|ethereum|crypto|blockchain|price|btc|eth|solana|token|nft|web3|defi|wallet|mining|airdrop|doge|shiba|coin|altcoin|hodl|staking|yield|liquidity|stablecoin|dao|dapp|metaverse)/i,
-    'Tech': /(tech|ai|artificial intelligence|spacex|tesla|starship|google|apple|microsoft|amazon|meta|facebook|twitter|x|nvidia|amd|intel|software|hardware|gadget|phone|laptop|internet|data|cloud|robot|semiconductor|algorithm|code|programming|startup|innovation)/i,
+    'Tech': /(tech|ai|artificial intelligence|spacex|tesla|starship|google|apple|microsoft|amazon|meta|facebook|twitter|x|nvidia|amd|intel|software|hardware|gadget|phone|laptop|internet|data|cloud|robot|semiconductor|algorithm|computing)/i,
     'Sports': /(NBA|super bowl|nba|nfl|mlb|nhl|football|basketball|baseball|hockey|soccer|fifa|world cup|olympics|champion|league|team|player|match|game|score|playoff|tournament|draft|transfer|tennis|golf|ufc|mma|esports|gaming)/i,
     'Politics': /(election|president|congress|vote|biden|trump|democrat|republican|senate|house|white house|government|policy|law|political|party|candidate|primary|debate|poll|geopolitics|ukraine|russia|china|eu|un|nato)/i,
     'Entertainment': /(oscars|grammys|emmys|movie|film|tv|television|series|netflix|hbo|disney|hollywood|actor|actress|director|celebrity|music|artist|album|song|concert|tour|box office|streaming|award|show|pop culture)/i,

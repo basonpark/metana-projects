@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "react-hot-toast"; // Assuming react-hot-toast is installed
+import { toast } from "sonner"; // Assuming sonner is installed
 import {
   Card,
   CardContent,
@@ -22,23 +22,16 @@ import { Info } from "lucide-react"; // For info icons
 
 export default function CreateMarketPage() {
   const router = useRouter();
-  const {
-    createMarket,
-    isReady,
-    isSubmitting,
-    isConfirming,
-    isConfirmed,
-    hash,
-    writeError,
-  } = useMarketContractSafe();
+  const { createMarket, isReady, getCategories } = useMarketContractSafe();
 
+  const [categories, setCategories] = useState<string[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
   const [formData, setFormData] = useState<Partial<CreateMarketParams>>({
     question: "",
-    expirationTime: undefined, // Store as timestamp number
+    expirationTime: undefined, // Store as Unix timestamp number
     dataFeedId: "", // Optional: Or use a placeholder/default
     threshold: undefined, // Optional: Based on dataFeedId
-    category: "General",
-    fee: 100, // Example: 100 basis points = 1%
+    category: "",
   });
 
   const handleInputChange = (
@@ -47,14 +40,24 @@ export default function CreateMarketPage() {
     >
   ) => {
     const { name, value, type } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "number" ? parseFloat(value) || undefined : value,
-    }));
+    console.log("[CreateMarketPage] handleInputChange fired:", {
+      name,
+      value,
+      type,
+    }); // DEBUG
+    setFormData((prev) => {
+      const newState = {
+        ...prev,
+        [name]: type === "number" ? parseFloat(value) || undefined : value,
+      };
+      console.log("[CreateMarketPage] New formData state (pending):", newState); // DEBUG
+      return newState;
+    });
   };
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const dateValue = e.target.value; // yyyy-mm-dd
+    console.log("[CreateMarketPage] handleDateChange fired:", { dateValue }); // DEBUG
     if (dateValue) {
       // Convert date string to Unix timestamp (seconds) for the contract
       const timestampSeconds = Math.floor(new Date(dateValue).getTime() / 1000);
@@ -74,7 +77,7 @@ export default function CreateMarketPage() {
     e.preventDefault();
 
     if (!isReady) {
-      toast.error("Please connect your wallet first.");
+      toast("Please connect your wallet first.");
       return;
     }
 
@@ -85,7 +88,7 @@ export default function CreateMarketPage() {
       !formData.category
       // Add more checks as needed (e.g., for dataFeedId/threshold if required)
     ) {
-      toast.error("Please fill in all required fields.");
+      toast("Please fill in all required fields.");
       return;
     }
 
@@ -96,7 +99,7 @@ export default function CreateMarketPage() {
       dataFeedId: formData.dataFeedId || "N/A", // Provide default if needed
       threshold: formData.threshold || 0, // Provide default if needed
       category: formData.category,
-      fee: formData.fee || 100, // Provide default if needed
+      fee: BigInt(200), // Hardcoded fee: 200 basis points = 2%
     };
 
     try {
@@ -104,27 +107,36 @@ export default function CreateMarketPage() {
       // Feedback handled by useEffect below
     } catch (error) {
       console.error("Create market submission error:", error);
-      toast.error("Failed to submit market creation transaction.");
+      toast("Failed to submit market creation transaction.");
     }
   };
 
   // Feedback effect
   useEffect(() => {
-    if (isConfirmed && hash) {
-      toast.success(
-        `Market created successfully! Tx: ${hash.substring(0, 10)}...`
-      );
-      // Optionally redirect or clear form
-      // router.push('/markets');
-      // setFormData({ ... initial empty state ... });
-    }
-    if (writeError) {
-      console.error("Create market contract error:", writeError);
-      toast.error(
-        `Market creation failed: ${writeError.message.substring(0, 100)}`
-      );
-    }
-  }, [isConfirmed, hash, writeError, router]);
+    const loadCategories = async () => {
+      console.log("[CreateMarketPage] Attempting to load categories..."); // DEBUG
+      if (!isReady) {
+        console.log(
+          "[CreateMarketPage] Hook not ready, skipping category load."
+        ); // DEBUG
+        return;
+      }
+      try {
+        setLoadingCategories(true);
+        const fetchedCategories = await getCategories();
+        setCategories(fetchedCategories || []); // Handle null case
+        console.log("[CreateMarketPage] Categories loaded:", fetchedCategories); // DEBUG
+      } catch (error) {
+        console.error("Error loading categories:", error);
+        const errorMessage =
+          error instanceof Error ? error.message : "An unknown error occurred";
+        toast(`Failed to load categories: ${errorMessage}`);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+    loadCategories();
+  }, [isReady, getCategories]);
 
   return (
     <RootLayout>
@@ -223,39 +235,10 @@ export default function CreateMarketPage() {
                 </p>
               </div>
 
-              {/* Fee (Optional/Advanced) */}
-              <div className="pt-2">
-                <Label htmlFor="fee">Market Fee (Basis Points)</Label>
-                <Input
-                  id="fee"
-                  name="fee"
-                  type="number"
-                  value={formData.fee}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 100 for 1%"
-                  min="0"
-                  max="10000" // Example max
-                  className="mt-1"
-                />
-                <p className="text-xs text-muted-foreground mt-1 flex items-center">
-                  <Info className="w-3 h-3 mr-1" />
-                  Fee charged on winnings (e.g., 100 = 1%). Contract might
-                  enforce limits.
-                </p>
-              </div>
-
               {/* Submit Button */}
               <div className="pt-4">
-                <Button
-                  type="submit"
-                  disabled={!isReady || isSubmitting || isConfirming}
-                  className="w-full"
-                >
-                  {isSubmitting || isConfirming
-                    ? isConfirming
-                      ? "Confirming Transaction..."
-                      : "Submitting Transaction..."
-                    : "Create Market"}
+                <Button type="submit" disabled={!isReady} className="w-full">
+                  Create Market
                 </Button>
               </div>
 
