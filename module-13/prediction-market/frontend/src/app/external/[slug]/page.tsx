@@ -194,7 +194,8 @@ export default function MarketDetailPage() {
     } else {
       endDate = new Date(Number(timestampOrString) * 1000).toISOString();
     }
-    return formatTimeRemaining(endDate);
+    // Pass the original timestamp in seconds
+    return formatTimeRemaining(Number(timestampOrString));
   };
 
   // --- Loading and Error States ---

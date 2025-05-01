@@ -23,6 +23,7 @@ interface RawPolymarketMarket {
   liquidityClob?: number;
   bestBid?: number; // Price for "No"
   bestAsk?: number; // Price for "Yes"
+  state?: 'open' | 'closed' | 'resolved'; // Add state field
   // Add any other fields returned by the API
 }
 
@@ -39,7 +40,15 @@ interface GammaApiResponse {
  * @param outcomesString - The JSON string like "[\"Yes\", \"No\"]"
  * @returns An array of outcome names or an empty array if parsing fails.
  */
-function parseOutcomes(outcomesString: string): string[] {
+function parseOutcomes(outcomesString: string | undefined): string[] {
+  if (!outcomesString) {
+    return ['Yes', 'No']; // Default for binary markets if outcomes are missing
+  }
+  // Explicit type check to satisfy linter, though the above should guarantee it's a string
+  if (typeof outcomesString !== 'string') {
+    console.warn('parseOutcomes received non-string after initial check:', outcomesString);
+    return ['Yes', 'No'];
+  }
   try {
     const parsed = JSON.parse(outcomesString);
     if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
@@ -74,13 +83,15 @@ function dateStringToTimestamp(dateString: string | undefined): number {
  */
 function mapRawMarketToPolymarket(rawMarket: RawPolymarketMarket): PolymarketAPIMarket {
   return {
-    id: rawMarket.id,
+    id: rawMarket.id as `0x${string}`,
     source: 'polymarket',
     question: rawMarket.question,
+    state: (rawMarket.state === 'open' || rawMarket.state === 'closed' || rawMarket.state === 'resolved')
+           ? rawMarket.state
+           : 'open',
     outcomes: parseOutcomes(rawMarket.outcomes),
-    volume: rawMarket.volume ?? 0,
+    volume: rawMarket.volume || 0,
     creationTime: dateStringToTimestamp(rawMarket.created_at),
-    // Assuming endDate maps to expirationTime for Polymarket display
     expirationTime: dateStringToTimestamp(rawMarket.endDate),
     category: rawMarket.category,
     slug: rawMarket.slug,

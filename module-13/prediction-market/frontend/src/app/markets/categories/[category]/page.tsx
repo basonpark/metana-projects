@@ -6,6 +6,7 @@ import { PredictionMarketCard } from "@/components/ui/prediction-market-card";
 import { fetchActivePolymarketMarkets } from "@/services/gamma";
 import { categorizeMarket, formatTimeRemaining } from "@/lib/utils";
 import { PolymarketAPIMarket } from "@/types/market";
+import { MarketStatus } from "@/types/market"; // Import MarketStatus
 import { RootLayout } from "@/components/layout/RootLayout";
 
 export default function CategoryPage() {
@@ -113,19 +114,35 @@ export default function CategoryPage() {
           ) : categoryMarkets.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {categoryMarkets.map((market) => (
-                <PredictionMarketCard
-                  key={market.id}
-                  id={market.id}
-                  title={market.question ?? "Market Question Unavailable"}
-                  odds={{
-                    yes: Math.round((market.bestAsk ?? 0.5) * 100),
-                    no: 100 - Math.round((market.bestAsk ?? 0.5) * 100),
-                  }}
-                  liquidity={market.liquidityClob?.toFixed(2) ?? "0"}
-                  timeRemaining={market.expirationTime ? formatTimeRemaining(market.expirationTime * 1000) : "N/A"}
-                  category={getCategoryTitle()}
-                  image={market.image}
-                />
+                (() => {
+                  let inferredStatus = MarketStatus.Open; // Default to Open
+                  if (market.expirationTime) {
+                    const expirationMillis = market.expirationTime * 1000;
+                    if (expirationMillis <= Date.now()) {
+                      inferredStatus = MarketStatus.Locked;
+                    }
+                  }
+                  return (
+                    <PredictionMarketCard
+                      key={market.id}
+                      id={market.id}
+                      title={market.question ?? "Market Question Unavailable"}
+                      odds={{
+                        yes: market.bestAsk
+                          ? Math.round(market.bestAsk * 100)
+                          : 0,
+                        no: market.bestAsk
+                          ? Math.round((1 - market.bestAsk) * 100)
+                          : 0,
+                      }}
+                      liquidity={market.liquidityClob?.toFixed(2) ?? "0"}
+                      timeRemaining={market.expirationTime ? formatTimeRemaining(market.expirationTime * 1000) : "N/A"}
+                      category={getCategoryTitle()}
+                      image={market.image}
+                      status={inferredStatus}
+                    />
+                  );
+                })()
               ))}
             </div>
           ) : (

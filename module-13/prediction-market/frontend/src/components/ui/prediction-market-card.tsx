@@ -40,14 +40,12 @@ export function PredictionMarketCard({
   status,
   props,
 }: PredictionMarketCardProps) {
-  // Format liquidity display
   const formattedLiquidity =
     typeof liquidity === "string"
       ? parseFloat(liquidity).toLocaleString()
       : Number(liquidity).toLocaleString();
 
-  // Placeholder for participants - adjust if data becomes available
-  const participants = Math.floor(Number(liquidity) / 200); // Example calculation
+  const participants = Math.floor(Number(liquidity) / 200);
 
   return (
     <Link href={`/markets/${id}`} className="block group">
@@ -99,11 +97,9 @@ export function PredictionMarketCard({
           <div className="flex items-center text-sm text-muted-foreground">
             <Clock className="mr-1.5 h-4 w-4 flex-shrink-0" />
             <span>{timeRemaining}</span>
-            {/* Add Status Badge */}
             <Badge
               variant={status === MarketStatus.Open ? "secondary" : "outline"}
               className={`ml-2 text-xs ${
-                // Status display
                 status === MarketStatus.Open
                   ? "bg-green-100 text-green-800 border-green-300"
                   : "bg-gray-100 text-gray-800 border-gray-300"

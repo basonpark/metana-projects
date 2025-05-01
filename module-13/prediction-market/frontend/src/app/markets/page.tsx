@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MarketStatus } from "@/types/market"; // Import MarketStatus
 
 // Define a type for combined market data
 interface CombinedMarket extends PolymarketAPIMarket {
@@ -28,7 +29,7 @@ const placeholderProphitMarkets: Omit<CombinedMarket, "derivedCategory">[] =
 
     return {
       // Fields from original placeholder structure
-      id: `prophit-placeholder-${i + 1}`,
+      id: `0x${(i + 1).toString().padStart(40, '0')}`, // Generate fake hex ID
       question: `Will Prophit Feature ${i + 1} be successful by Q${
         (i % 4) + 1
       } 2025?`,
@@ -50,6 +51,7 @@ const placeholderProphitMarkets: Omit<CombinedMarket, "derivedCategory">[] =
 
       // Field from CombinedMarket definition itself
       origin: "prophit" as const,
+      state: "open", // Add the missing required 'state' property
     };
   });
 
@@ -421,6 +423,18 @@ export default function MarketsPage() {
           ) : paginatedMarkets.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {paginatedMarkets.map((market) => {
+                const now = new Date().getTime();
+                let inferredStatus: MarketStatus;
+                if (market.expirationTime) {
+                  const expirationMillis = market.expirationTime * 1000;
+                  if (expirationMillis <= now) {
+                    inferredStatus = MarketStatus.Locked; // Market ended
+                  } else {
+                    inferredStatus = MarketStatus.Open; // Market active
+                  }
+                } else {
+                  inferredStatus = MarketStatus.Open; // Default to Open if no expiration time
+                }
                 const detailUrl = `/markets/${market.id}?type=${market.origin}`;
                 const displayYesOdds = Math.round(
                   (market.bestAsk ?? 0.5) * 100
@@ -448,6 +462,7 @@ export default function MarketsPage() {
                       category={market.derivedCategory || "Other"}
                       image={market.image}
                       origin={market.origin}
+                      status={inferredStatus} // Pass the inferred status
                     />
                   </Link>
                 );
