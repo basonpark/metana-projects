@@ -9,12 +9,13 @@ export function cn(...inputs: ClassValue[]) {
 
 /**
  * Formats an ISO date string or timestamp number into a human-readable time remaining string.
- * @param endDateStringOrTimestamp - The end date as an ISO string or Unix timestamp (in milliseconds).
+ * @param expirationTimestampSeconds - The end date Unix timestamp (in seconds).
  * @returns A string like "Ended", "5 days remaining", "1 hour remaining", etc.
  */
-export function formatTimeRemaining(endDateStringOrTimestamp: string | number): string {
+export function formatTimeRemaining(expirationTimestampSeconds: number): string {
   const now = new Date();
-  const end = new Date(endDateStringOrTimestamp);
+  // Multiply by 1000 to convert seconds to milliseconds for the Date constructor
+  const end = new Date(expirationTimestampSeconds * 1000);
   const diff = end.getTime() - now.getTime();
 
   if (diff <= 0) {

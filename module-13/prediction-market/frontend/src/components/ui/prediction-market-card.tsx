@@ -6,6 +6,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
+import { MarketStatus } from "@/types/market";
 
 export interface PredictionMarketCardProps {
   id: string | number;
@@ -21,6 +22,7 @@ export interface PredictionMarketCardProps {
   isFeatured?: boolean;
   className?: string;
   origin?: "polymarket" | "prophit";
+  status: MarketStatus;
   props?: any;
 }
 
@@ -35,8 +37,17 @@ export function PredictionMarketCard({
   isFeatured = false,
   className,
   origin,
+  status,
   props,
 }: PredictionMarketCardProps) {
+  // Log received props
+  console.log(
+    `[PredictionMarketCard Props] ID: ${id}, Title: ${title.substring(
+      0,
+      20
+    )}..., Status: ${MarketStatus[status]}, TimeRemaining: ${timeRemaining}, Liquidity: ${liquidity}`
+  );
+
   // Format liquidity display
   const formattedLiquidity =
     typeof liquidity === "string"
@@ -95,6 +106,17 @@ export function PredictionMarketCard({
         <div className="flex items-center text-sm text-muted-foreground">
           <Clock className="mr-1.5 h-4 w-4 flex-shrink-0" />
           <span>{timeRemaining}</span>
+          {/* Add Status Badge */}
+          <Badge
+            variant={status === MarketStatus.Open ? "secondary" : "outline"}
+            className={`ml-2 text-xs ${
+              status === MarketStatus.Open
+                ? "bg-green-100 text-green-800 border-green-300"
+                : "bg-gray-100 text-gray-800 border-gray-300"
+            }`}
+          >
+            {MarketStatus[status] === 'Open' ? 'Open' : 'Ended'}
+          </Badge>
         </div>
 
         <div className="space-y-1.5">

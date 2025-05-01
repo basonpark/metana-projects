@@ -29,6 +29,16 @@ export enum ProphitDataSourceType {
   ExternalAPI
 }
 
+// --- Enums based on MarketStatus ---
+
+/**
+ * Enum defining the possible statuses of a prediction market.
+ */
+export enum MarketStatus {
+  Open, // Market is active and accepting trades
+  Locked, // Market is closed for trading but not yet resolved
+}
+
 // --- Base Market Interface ---
 
 /**
@@ -120,6 +130,7 @@ export interface DisplayMarket {
   slug?: string; // Polymarket specific (optional)
   url?: string; // Polymarket specific (optional)
   liquidity?: number; // Optional liquidity figure for sorting/filtering
+  status?: MarketStatus; // Add the missing status field
   // Add any other common fields required by MarketCard, e.g., volume?
 }
 
