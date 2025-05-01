@@ -65,9 +65,8 @@ export default function MarketDetailPage() {
   const marketType = searchParams.get("type") || "polymarket";
 
   // --- API State (Used primarily for Polymarket type, supplementary for Prophit) ---
-  const [polymarketData, setPolymarketData] = useState<PolymarketAPIMarket | null>(
-    null
-  ); // State specifically for Polymarket API data
+  const [polymarketData, setPolymarketData] =
+    useState<PolymarketAPIMarket | null>(null); // State specifically for Polymarket API data
   const [isApiLoading, setIsApiLoading] = useState(true);
 
   // --- Wallet State ---
@@ -229,10 +228,9 @@ export default function MarketDetailPage() {
   const displayCategory = isProphitMarket
     ? (contractQuestion as string | undefined) ?? "General" // Use contract data for Prophit category
     : polymarketData?.category ?? "General";
-  const displayDescription =
-    isProphitMarket
-      ? "Trading occurs on the Prophit protocol via smart contracts."
-      : polymarketData?.description || "No description available.";
+  const displayDescription = isProphitMarket
+    ? "Trading occurs on the Prophit protocol via smart contracts."
+    : polymarketData?.description || "No description available.";
   const displayImage = isProphitMarket ? undefined : polymarketData?.image;
 
   // Odds/Prices - different sources
@@ -273,7 +271,10 @@ export default function MarketDetailPage() {
   // --- Render Logic ---
 
   // Initial loading skeleton
-  if (isPageLoading && !(isProphitMarket ? contractQuestion : polymarketData?.question)) {
+  if (
+    isPageLoading &&
+    !(isProphitMarket ? contractQuestion : polymarketData?.question)
+  ) {
     return (
       <RootLayout>
         <div className="container mx-auto py-8">
@@ -629,8 +630,7 @@ export default function MarketDetailPage() {
                           Volume (24h)
                         </div>
                         <div className="font-medium">
-                          $
-                          {polymarketData?.volumeClob?.toLocaleString() ?? "0"}
+                          ${polymarketData?.volumeClob?.toLocaleString() ?? "0"}
                         </div>
                       </div>
                     </>
