@@ -116,7 +116,6 @@ The platform uses the Gamma API from Polymarket for market data. To access this:
 1. Register for an API key at Polymarket
 2. Add your API key to the `.env` file
 
-
 ## Contributing
 
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.

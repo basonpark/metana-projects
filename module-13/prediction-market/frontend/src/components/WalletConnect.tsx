@@ -1,59 +1,96 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Wallet, LogOut } from "lucide-react"; // Import icons
 import { useAccount, useConnect, useDisconnect } from "wagmi";
-// Correct import path for newer Wagmi/Viem versions might just be 'wagmi/connectors'
-// If this fails, you might need to install `@wagmi/connectors` separately and import from there.
-import { injected } from "wagmi/connectors"; // Use the connector directly
+import { useState, useEffect } from "react";
+import { Wallet, Check, ChevronsUpDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { type Connector } from "wagmi";
 
 export function WalletConnect() {
-  // isConnecting from useAccount is usually for auto-reconnect attempts on load
-  const { address, isConnected, isConnecting: isReconnecting } = useAccount();
-  // isPending from useConnect is for the active connection attempt triggered by the user
-  const { connect, connectors, error, isPending } = useConnect();
+  const { address, isConnected } = useAccount();
+  const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  // Function to format address (e.g., 0x123...abc)
-  const formatAddress = (addr: string | undefined) => {
-    if (!addr) return "";
-    return `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
+  // Use useEffect to handle client-side-only operations
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Format address for display
+  const formatAddress = (addr: string) => {
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 
-  const handleConnect = () => {
-    // Call connect with the desired connector instance
-    connect({ connector: injected() });
+  // Handle connector selection
+  const handleConnectorSelect = (connectorId: string) => {
+    const connector = connectors.find((c) => c.id === connectorId);
+    if (connector) {
+      connect({ connector });
+    }
   };
 
-  if (isConnected) {
-    return (
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-medium hidden sm:inline">
-          {formatAddress(address)}
-        </span>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => disconnect()}
-          title="Disconnect Wallet"
-        >
-          <LogOut className="h-4 w-4 sm:mr-2" />
-          <span className="hidden sm:inline">Disconnect</span>
-        </Button>
-      </div>
-    );
-  }
-
+  // Render a consistent DOM structure regardless of connection state
+  // Only change the content once mounted on the client
   return (
-    <Button
-      onClick={handleConnect} // Use the handler function
-      disabled={isPending} // Disable only during active connection attempt
-      aria-label="Connect Wallet"
-    >
-      <Wallet className="h-4 w-4 mr-2" />
-      {isPending ? "Connecting..." : "Connect Wallet"}
-      {/* Optional: More specific error display if needed */}
-      {error && <span className="ml-2 text-xs text-red-500">(Error)</span>}
-    </Button>
+    <div className="relative">
+      {mounted && isConnected && address ? (
+        // Connected state - only rendered after mounting on client
+        <div className="flex items-center gap-2">
+          <Badge
+            variant="outline"
+            className="bg-primary/10 text-primary hover:bg-primary/20"
+          >
+            {formatAddress(address)}
+          </Badge>
+          <Button variant="outline" size="sm" onClick={() => disconnect()}>
+            Disconnect
+          </Button>
+        </div>
+      ) : (
+        // Disconnected state or initial SSR state
+        <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+          <DropdownMenuTrigger asChild>
+            <Button variant="default" size="sm">
+              <Wallet className="h-4 w-4 mr-2" />
+              Connect Wallet
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56">
+            <DropdownMenuLabel>Select a wallet</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {connectors.map((connector) => (
+              <DropdownMenuItem
+                key={connector.id}
+                onClick={() => handleConnectorSelect(connector.id)}
+                disabled={!connector.ready}
+                className="flex items-center justify-between"
+              >
+                {connector.name}
+                {Boolean(connector.ready) && (
+                  <Check className="h-4 w-4 text-green-500" />
+                )}
+                {!Boolean(connector.ready) && (
+                  <span className="text-xs text-muted-foreground">
+                    (unsupported)
+                  </span>
+                )}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </div>
   );
 }

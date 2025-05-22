@@ -41,31 +41,9 @@ export const useBlockData = (tokenAddress: string, blockCount: number = 10) => {
     }  
   }, [tokenAddress]);  
 
-  // Function to load a specific range of blocks
-  const loadBlocksRange = useCallback(async (endBlock: number, startBlock: number, tokenAddress: string) => {
-    try {
-      const length = endBlock - startBlock + 1;
-      if (length <= 0) {
-        console.warn('loadBlocksRange called with invalid range:', startBlock, endBlock);
-        return; // Avoid fetching if range is invalid
-      }
-      const numbers = Array.from(
-        { length: length },
-        (_, i) => startBlock + i
-      );
-      console.log(`Fetching blocks from ${startBlock} to ${endBlock}`);
-      const fetchedBlocks = await Promise.all(numbers.map((blockNumber) => getEnrichedBlock(blockNumber, tokenAddress)));
-      // Set initial blocks, replacing any previous ones
-      setBlocks(fetchedBlocks);
-    } catch (err) {
-        console.error('Error loading block range:', err);
-        setError("Failed to load initial block range");
-    }
-  }, [tokenAddress]); // Depends only on tokenAddress as getEnrichedBlock uses it
-
   // Initial load  
   useEffect(() => {  
-    if (isConnected) {
+    if (isConnected && websocket) {
       // Start with a smaller initial batch of blocks
       const initialBlockCount = 10; // Match the block table page size
       
@@ -73,7 +51,7 @@ export const useBlockData = (tokenAddress: string, blockCount: number = 10) => {
       const loadInitialBlocks = async () => {
         setIsLoading(true);
         try {
-          const currentBlock = await alchemy.core.getBlockNumber();
+          const currentBlock = await provider.getBlockNumber();
           // Load just enough blocks for the first page
           await loadBlocksRange(currentBlock, currentBlock - initialBlockCount + 1, tokenAddress);
         } catch (error) {
@@ -86,7 +64,7 @@ export const useBlockData = (tokenAddress: string, blockCount: number = 10) => {
       
       loadInitialBlocks();
     }
-  }, [isConnected, tokenAddress, loadBlocksRange]);  
+  }, [isConnected, websocket, tokenAddress]);  
 
   // WebSocket subscription  
   useEffect(() => {  
@@ -113,3 +91,5 @@ export const useBlockData = (tokenAddress: string, blockCount: number = 10) => {
     isLoading
   };  
 };  
+
+

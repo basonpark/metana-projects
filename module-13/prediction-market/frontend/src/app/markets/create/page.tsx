@@ -146,15 +146,13 @@ export default function CreateMarketPage() {
         fee: parseFloat(formState.fee) / 100, // Convert to decimal
       };
 
-      const newMarketAddress = await createMarket(marketParams);
+      const result = await createMarket(marketParams);
 
-      if (newMarketAddress) {
-        // Navigate to the new market with type parameter
-        console.log(`Market created: ${newMarketAddress}, redirecting...`);
-        router.push(`/markets/${newMarketAddress}?type=prophit`);
+      if (result && result.marketAddress) {
+        // Navigate to the new market
+        router.push(`/markets/${result.marketAddress}`);
       } else {
-        // Handle case where address is unexpectedly null/undefined
-        throw new Error("Failed to create market or retrieve address");
+        throw new Error("Failed to create market");
       }
     } catch (error) {
       console.error("Error creating market:", error);
@@ -219,7 +217,7 @@ export default function CreateMarketPage() {
                 name="title"
                 value={formState.title}
                 onChange={handleInputChange}
-                placeholder="e.g., Will Bitcoin exceed $100,000 by the end of 2025?"
+                placeholder="e.g., Will Bitcoin exceed $100,000 by the end of 2024?"
                 className={`w-full p-3 rounded-md border ${
                   formErrors.title ? "border-destructive" : "border-border"
                 } bg-background`}

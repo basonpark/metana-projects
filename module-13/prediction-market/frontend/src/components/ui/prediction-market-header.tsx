@@ -14,7 +14,6 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
-import { cn } from "@/lib/utils";
 
 interface NavigationItem {
   title: string;
@@ -41,7 +40,29 @@ export function PredictionMarketHeader({
     },
     {
       title: "Markets",
-      href: "/",
+      description: "Explore prediction markets across various categories",
+      items: [
+        {
+          title: "Popular Markets",
+          href: "/markets/categories/popular",
+          description: "See what's trending right now",
+        },
+        {
+          title: "Politics",
+          href: "/markets/categories/politics",
+          description: "Political events and outcomes",
+        },
+        {
+          title: "Crypto",
+          href: "/markets/categories/crypto",
+          description: "Cryptocurrency price predictions",
+        },
+        {
+          title: "Sports",
+          href: "/markets/categories/sports",
+          description: "Sports events and outcomes",
+        },
+      ],
     },
     {
       title: "How It Works",
@@ -70,7 +91,7 @@ export function PredictionMarketHeader({
               <NavigationMenuList>
                 {navigationItems.map((item) => (
                   <NavigationMenuItem key={item.title}>
-                    {item.href ? (
+                    {item.href && !item.items ? (
                       <Link href={item.href} legacyBehavior passHref>
                         <NavigationMenuLink
                           className={navigationMenuTriggerStyle()}
@@ -78,37 +99,37 @@ export function PredictionMarketHeader({
                           {item.title}
                         </NavigationMenuLink>
                       </Link>
-                    ) : item.items ? (
+                    ) : (
                       <>
                         <NavigationMenuTrigger>
                           {item.title}
                         </NavigationMenuTrigger>
-                        <NavigationMenuContent>
-                          <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
-                            {item.items.map((subItem) => (
-                              <li key={subItem.title} className="row-span-1">
-                                <NavigationMenuLink asChild>
-                                  <Link
-                                    href={subItem.href}
-                                    className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                                  >
-                                    <div className="text-base font-medium leading-none">
-                                      {subItem.title}
-                                    </div>
-                                    {subItem.description && (
-                                      <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-                                        {subItem.description}
-                                      </p>
-                                    )}
-                                  </Link>
-                                </NavigationMenuLink>
-                              </li>
-                            ))}
-                          </ul>
-                        </NavigationMenuContent>
+                        {item.items && (
+                          <NavigationMenuContent>
+                            <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
+                              {item.items.map((subItem) => (
+                                <li key={subItem.title} className="row-span-1">
+                                  <NavigationMenuLink asChild>
+                                    <Link
+                                      href={subItem.href}
+                                      className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                                    >
+                                      <div className="text-base font-medium leading-none">
+                                        {subItem.title}
+                                      </div>
+                                      {subItem.description && (
+                                        <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+                                          {subItem.description}
+                                        </p>
+                                      )}
+                                    </Link>
+                                  </NavigationMenuLink>
+                                </li>
+                              ))}
+                            </ul>
+                          </NavigationMenuContent>
+                        )}
                       </>
-                    ) : (
-                      <span className="px-4 py-2">{item.title}</span>
                     )}
                   </NavigationMenuItem>
                 ))}
@@ -140,7 +161,7 @@ export function PredictionMarketHeader({
             <ul className="space-y-4">
               {navigationItems.map((item) => (
                 <li key={item.title} className="py-2">
-                  {item.href ? (
+                  {item.href && !item.items ? (
                     <Button
                       variant="ghost"
                       asChild
@@ -151,30 +172,26 @@ export function PredictionMarketHeader({
                         {item.title}
                       </Link>
                     </Button>
-                  ) : item.items ? (
-                    <div className="space-y-2">
-                      <div className="text-lg font-medium text-muted-foreground px-4">
-                        {item.title}
-                      </div>
-                      <ul className="ml-4 space-y-2">
-                        {item.items.map((subItem) => (
-                          <li key={subItem.title}>
-                            <Button
-                              variant="ghost"
-                              className="h-auto py-1 px-2 w-full justify-start text-base text-muted-foreground hover:text-foreground"
-                              asChild
-                              onClick={() => setOpen(false)}
-                            >
-                              <Link href={subItem.href}>{subItem.title}</Link>
-                            </Button>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
                   ) : (
-                    <span className="block px-4 text-lg font-medium text-muted-foreground">
-                      {item.title}
-                    </span>
+                    <div className="space-y-2">
+                      <div className="text-lg font-medium">{item.title}</div>
+                      {item.items && (
+                        <ul className="ml-4 space-y-2">
+                          {item.items.map((subItem) => (
+                            <li key={subItem.title}>
+                              <Button
+                                variant="ghost"
+                                className="h-auto py-1 px-2 w-full justify-start text-base text-muted-foreground hover:text-foreground"
+                                asChild
+                                onClick={() => setOpen(false)}
+                              >
+                                <Link href={subItem.href}>{subItem.title}</Link>
+                              </Button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
                   )}
                 </li>
               ))}

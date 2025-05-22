@@ -12,7 +12,6 @@ import { BorderBeam } from "./magicui/border-beam";
 import { BlockCountdown } from "./block-countdown";
 import { EtherlensLogo } from "./Logo";
 import Link from "next/link";
-import Image from "next/image";
 
 export const Dashboard = () => {
   const [selectedToken, setSelectedToken] = useState(tokens[0]);
@@ -34,7 +33,7 @@ export const Dashboard = () => {
             <div className="flex justify-between h-16">
               <div className="flex items-center space-x-8">
                 <Link href="/">
-                  <div className="flex items-center space-x-2 cursor-pointer">
+                  <div className="flex items-center space-x-2">
                     <EtherlensLogo className="h-8 w-8" />
                     <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
                       Etherlens
@@ -43,18 +42,18 @@ export const Dashboard = () => {
                 </Link>
 
                 <div className="hidden md:flex space-x-6">
-                  <Link
+                  <a
                     href="/"
                     className="text-slate-200 hover:text-white px-3 py-2 rounded-md text-md font-medium border-b-2 border-amber-500"
                   >
                     Dashboard
-                  </Link>
-                  <Link
+                  </a>
+                  <a
                     href="/about"
                     className="text-slate-300 hover:text-white px-3 py-2 rounded-md text-md  font-medium hover:border-b-2 hover:border-amber-500 transition-all"
                   >
                     About
-                  </Link>
+                  </a>
                 </div>
               </div>
 
@@ -93,13 +92,11 @@ export const Dashboard = () => {
           <div className="absolute inset-0 z-0">
             <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-[#1A1718] to-[#1E1A1B] opacity-90"></div>
 
-            <Image
+            <img
               src="/ethereum-network-bg.png"
               alt="Ethereum Network Visualization"
               className="absolute inset-0 w-full h-full object-cover opacity-35 bg-animation"
               style={{ filter: "saturate(100%) brightness(0.9)" }}
-              width={1920}
-              height={1080}
             />
           </div>
 

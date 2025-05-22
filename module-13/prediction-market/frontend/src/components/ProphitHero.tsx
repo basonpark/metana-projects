@@ -4,14 +4,13 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { AuroraBackground } from "@/components/ui/aurora-background";
 import { Button } from "@/components/ui/button";
-import { FlipText } from "@/components/ui/flip-text";
 
 export function ProphitHero() {
   return (
-    // Full-width container with no constraints
-    <div className="relative w-full min-h-[80vh] overflow-hidden">
-      {/* Aurora background positioned to cover entire viewport width */}
-      <div className="absolute -inset-8 z-0 w-[100vw] left-[calc(50%-50vw)] right-[calc(50%-50vw)]">
+    // Main container with relative positioning
+    <div className="relative w-full min-h-[70vh]">
+      {/* Aurora background positioned only in the hero section, not fixed */}
+      <div className="absolute inset-0 z-0 w-full h-full">
         <AuroraBackground className="w-full h-full" showRadialGradient={false}>
           <div></div>
         </AuroraBackground>
@@ -19,18 +18,17 @@ export function ProphitHero() {
 
       {/* Hero content positioned on top of aurora background */}
       <div className="relative z-10 min-h-[70vh] py-16 flex items-center justify-center">
-        <div className="flex flex-col gap-2 items-center justify-center px-4 max-w-4xl mx-auto text-center">
-          {/* Logo and app name - first to appear */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{
-              delay: 0.2,
-              duration: 1,
-              ease: "easeOut",
-            }}
-            className="flex items-center justify-center gap-2 mb-2"
-          >
+        <motion.div
+          initial={{ opacity: 0.0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{
+            delay: 0.3,
+            duration: 0.8,
+            ease: "easeInOut",
+          }}
+          className="flex flex-col gap-6 items-center justify-center px-4 max-w-4xl mx-auto text-center"
+        >
+          <div className="flex items-center justify-center gap-2 mb-2">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -44,72 +42,20 @@ export function ProphitHero() {
               <path d="M10 12h4" strokeLinecap="round" />
             </svg>
             <span className="text-3xl font-bold">Prophit</span>
-          </motion.div>
+          </div>
 
-          {/* First line of heading with flip text animation */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            transition={{ delay: 0.6, duration: 0.5 }}
-            className="text-4xl md:text-6xl font-bold text-foreground leading-tight pb-0"
-          >
-            <FlipText
-              word="Predict the Future."
-              duration={1.0}
-              delayMultiple={0.06}
-              className="inline-block"
-              framerProps={{
-                hidden: { rotateX: -90, opacity: 0, y: 20 },
-                visible: { rotateX: 0, opacity: 1, y: 0 },
-              }}
-            />
-          </motion.div>
+          <h1 className="text-4xl md:text-6xl font-bold text-foreground leading-tight">
+            Predict the Future.
+            <br />
+            <span className="text-primary">Profit</span> from Your Insights.
+          </h1>
 
-          {/* Second line of heading with flip text animation */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            transition={{ delay: 1.0, duration: 3 }}
-            className="text-6xl md:text-7xl font-bold text-foreground leading-none "
-          >
-            <FlipText
-              word="Profit from Your Insights."
-              duration={1.0}
-              delayMultiple={0.06}
-              className="inline-block text-primary"
-              framerProps={{
-                hidden: { rotateX: -90, opacity: 0, y: 20 },
-                visible: { rotateX: 0, opacity: 1, y: 0 },
-              }}
-            />
-          </motion.div>
-
-          {/* Description text - fourth to appear */}
-          <motion.p
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{
-              delay: 2.6,
-              duration: 1,
-              ease: "easeOut",
-            }}
-            className="text-2xl text-muted-foreground max-w-3xl mt-10"
-          >
+          <p className="text-xl text-muted-foreground max-w-3xl">
             Join the next generation prediction market platform where your
             knowledge becomes your advantage.
-          </motion.p>
+          </p>
 
-          {/* Buttons - last to appear */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{
-              delay: 3.2,
-              duration: 1,
-              ease: "easeOut",
-            }}
-            className="flex flex-col sm:flex-row gap-4 mt-10"
-          >
+          <div className="flex flex-col sm:flex-row gap-4 mt-4">
             <Button asChild size="lg" className="text-base px-8">
               <Link href="/markets">Explore Markets</Link>
             </Button>
@@ -121,8 +67,8 @@ export function ProphitHero() {
             >
               <Link href="/markets/create">Create Market</Link>
             </Button>
-          </motion.div>
-        </div>
+          </div>
+        </motion.div>
       </div>
     </div>
   );

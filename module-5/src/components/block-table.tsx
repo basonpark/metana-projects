@@ -3,7 +3,6 @@
 import { EnrichedBlock } from "../lib/alchemy";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { useState, useEffect } from "react";
-import { Token } from "@/lib/tokens";
 
 const GasChangeCell = ({
   current,
