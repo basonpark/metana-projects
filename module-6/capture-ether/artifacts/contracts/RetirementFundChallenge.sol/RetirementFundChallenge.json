@@ -1,0 +1,54 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "RetirementFundChallenge",
+  "sourceName": "contracts/RetirementFundChallenge.sol",
+  "abi": [
+    {
+      "constant": false,
+      "inputs": [],
+      "name": "collectPenalty",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [],
+      "name": "withdraw",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "isComplete",
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "name": "player",
+          "type": "address"
+        }
+      ],
+      "payable": true,
+      "stateMutability": "payable",
+      "type": "constructor"
+    }
+  ],
+  "bytecode": "0x606060405233600160006101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055506312cc030042016003556040516020806103e983398101604052808051906020019091905050670de0b6b3a76400003414151561008157600080fd5b80600260006101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055503460008190555050610310806100d96000396000f300606060405260043610610057576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff16806339f22f6b1461005c5780633ccfd60b14610071578063b2fa1c9e14610086575b600080fd5b341561006757600080fd5b61006f6100b3565b005b341561007c57600080fd5b610084610198565b005b341561009157600080fd5b6100996102c3565b604051808215151515815260200191505060405180910390f35b6000600260009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff1614151561011157600080fd5b3073ffffffffffffffffffffffffffffffffffffffff163160005403905060008111151561013e57600080fd5b3373ffffffffffffffffffffffffffffffffffffffff166108fc3073ffffffffffffffffffffffffffffffffffffffff16319081150290604051600060405180830381858888f19350505050151561019557600080fd5b50565b600160009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff161415156101f457600080fd5b600354421015610269573373ffffffffffffffffffffffffffffffffffffffff166108fc600a60093073ffffffffffffffffffffffffffffffffffffffff16310281151561023e57fe5b049081150290604051600060405180830381858888f19350505050151561026457600080fd5b6102c1565b3373ffffffffffffffffffffffffffffffffffffffff166108fc3073ffffffffffffffffffffffffffffffffffffffff16319081150290604051600060405180830381858888f1935050505015156102c057600080fd5b5b565b6000803073ffffffffffffffffffffffffffffffffffffffff1631149050905600a165627a7a723058205937503f6c0b397d4109760df163d59f3607a78a5e47fd42b88e5623b873510a0029",
+  "deployedBytecode": "0x606060405260043610610057576000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff16806339f22f6b1461005c5780633ccfd60b14610071578063b2fa1c9e14610086575b600080fd5b341561006757600080fd5b61006f6100b3565b005b341561007c57600080fd5b610084610198565b005b341561009157600080fd5b6100996102c3565b604051808215151515815260200191505060405180910390f35b6000600260009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff1614151561011157600080fd5b3073ffffffffffffffffffffffffffffffffffffffff163160005403905060008111151561013e57600080fd5b3373ffffffffffffffffffffffffffffffffffffffff166108fc3073ffffffffffffffffffffffffffffffffffffffff16319081150290604051600060405180830381858888f19350505050151561019557600080fd5b50565b600160009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff161415156101f457600080fd5b600354421015610269573373ffffffffffffffffffffffffffffffffffffffff166108fc600a60093073ffffffffffffffffffffffffffffffffffffffff16310281151561023e57fe5b049081150290604051600060405180830381858888f19350505050151561026457600080fd5b6102c1565b3373ffffffffffffffffffffffffffffffffffffffff166108fc3073ffffffffffffffffffffffffffffffffffffffff16319081150290604051600060405180830381858888f1935050505015156102c057600080fd5b5b565b6000803073ffffffffffffffffffffffffffffffffffffffff1631149050905600a165627a7a723058205937503f6c0b397d4109760df163d59f3607a78a5e47fd42b88e5623b873510a0029",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}
