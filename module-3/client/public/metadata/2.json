@@ -1,0 +1,18 @@
+{  
+    "name": "Disco Beat Tortoise",  
+    "image": "https://ipfs.io/ipfs/bafybeifpkc2j3aryys6pimdcyrrowb2clvsws27fbj4cwsd2mlahzbtxqe/2.png",  
+    "attributes": [  
+        {  
+            "trait_type": "Background",  
+            "value": "1970s Disco"  
+        },  
+        {  
+            "trait_type": "Rarity",  
+            "value": "Rare"  
+        },  
+        {  
+            "trait_type": "Funk Score",  
+            "value": 8.5  
+        }  
+    ]  
+}  
