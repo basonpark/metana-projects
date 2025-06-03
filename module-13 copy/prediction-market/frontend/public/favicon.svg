@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#9333ea" stroke-width="1.5">
+  <!-- Simple eye outline -->
+  <path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6-10-6-10-6z" />
+  
+  <!-- Coin/pupil in center -->
+  <circle cx="12" cy="12" r="3" />
+  
+  <!-- Dollar sign -->
+  <path d="M12 10v4" stroke-linecap="round" />
+  <path d="M10 12h4" stroke-linecap="round" />
+</svg> 
