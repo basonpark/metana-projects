@@ -1,8 +1,0 @@
-fastapi
-uvicorn[standard]
-pydantic
-python-dotenv
-slither-analyzer  
-mythril  
-# solc-select should be managed outside pip, if needed
-openai
