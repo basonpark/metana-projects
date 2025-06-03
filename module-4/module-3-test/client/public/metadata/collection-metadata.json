@@ -1,7 +1,0 @@
-{  
-    "name": "Funky Turtles",  
-    "description": "This is a collection of vibey funky turtles",  
-    "image": "https://ipfs.io/ipfs/bafybeifpkc2j3aryys6pimdcyrrowb2clvsws27fbj4cwsd2mlahzbtxqe/collection-image.png",   
-    "seller_fee_basis_points": 0,
-    "fee_recipient": "0x9a36417358AFE769De8e9C8d7b0205F70e69A822"  
-}  
