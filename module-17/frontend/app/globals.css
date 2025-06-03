@@ -1,0 +1,238 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.75rem;
+
+    /* Custom colors for voting */
+    --vote-for: 142.1 76.2% 36.3%;
+    --vote-against: 0 72.2% 50.6%;
+    --vote-abstain: 215 16.3% 46.9%;
+
+    /* Subtle versions */
+    --vote-for-subtle: 142.1 70.6% 45.3%;
+    --vote-against-subtle: 0 65.2% 54.6%;
+    --vote-abstain-subtle: 215 16.3% 56.9%;
+
+    /* Even more subtle background versions */
+    --vote-for-bg: 142.1 60% 87%;
+    --vote-against-bg: 0 65.2% 87%;
+    --vote-abstain-bg: 215 16.3% 87%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+
+    /* Custom colors for voting in dark mode */
+    --vote-for: 142.1 70.6% 45.3%;
+    --vote-against: 0 65.2% 54.6%;
+    --vote-abstain: 215 20.2% 65.1%;
+
+    /* Subtle versions */
+    --vote-for-subtle: 142.1 60% 35%;
+    --vote-against-subtle: 0 60% 40%;
+    --vote-abstain-subtle: 215 20% 50%;
+
+    /* Even more subtle background versions */
+    --vote-for-bg: 142.1 30% 20%;
+    --vote-against-bg: 0 30% 20%;
+    --vote-abstain-bg: 215 15% 20%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  /* Enhanced button styles */
+  .btn-gradient {
+    @apply bg-gradient-to-r from-primary to-primary/80 shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300;
+  }
+
+  .btn-gradient-secondary {
+    @apply bg-gradient-to-r from-secondary to-secondary/80 shadow-md shadow-secondary/20 hover:shadow-lg hover:shadow-secondary/30 transition-all duration-300;
+  }
+
+  .btn-gradient-subtle {
+    @apply bg-gradient-to-r from-muted/80 to-muted/50 shadow-md hover:shadow-lg transition-all duration-300;
+  }
+
+  /* Card enhancements */
+  .card-gradient {
+    @apply bg-gradient-to-br from-card to-card/80 shadow-xl hover:shadow-2xl transition-all duration-300 border-none;
+  }
+
+  .card-gradient-hover {
+    @apply bg-gradient-to-br from-card to-card/80 shadow-lg hover:shadow-xl hover:bg-gradient-to-br hover:from-card/90 hover:to-card/70 transition-all duration-300 border-none;
+  }
+
+  /* Voting styles */
+  .vote-for {
+    color: hsl(var(--vote-for-subtle));
+  }
+
+  .vote-against {
+    color: hsl(var(--vote-against-subtle));
+  }
+
+  .vote-abstain {
+    color: hsl(var(--vote-abstain-subtle));
+  }
+
+  .vote-for-bg {
+    background-color: hsl(var(--vote-for-bg));
+  }
+
+  .vote-against-bg {
+    background-color: hsl(var(--vote-against-bg));
+  }
+
+  .vote-abstain-bg {
+    background-color: hsl(var(--vote-abstain-bg));
+  }
+
+  .vote-for-pill {
+    background-color: hsl(var(--vote-for-bg));
+    color: hsl(var(--vote-for-subtle));
+  }
+
+  .vote-against-pill {
+    background-color: hsl(var(--vote-against-bg));
+    color: hsl(var(--vote-against-subtle));
+  }
+
+  .vote-abstain-pill {
+    background-color: hsl(var(--vote-abstain-bg));
+    color: hsl(var(--vote-abstain-subtle));
+  }
+
+  /* Progress bar for voting */
+  .vote-progress-bar {
+    @apply h-1.5 w-full overflow-hidden rounded-full bg-muted/50;
+  }
+
+  .vote-progress-for {
+    background-color: hsl(var(--vote-for-subtle));
+    opacity: 0.8;
+  }
+
+  .vote-progress-against {
+    background-color: hsl(var(--vote-against-subtle));
+    opacity: 0.8;
+  }
+
+  .vote-progress-abstain {
+    background-color: hsl(var(--vote-abstain-subtle));
+    opacity: 0.8;
+  }
+
+  /* Enhanced card styles */
+  .enhanced-card {
+    @apply overflow-hidden border-none shadow-xl bg-gradient-to-br from-card to-card/80 hover:shadow-2xl transition-all duration-300;
+  }
+
+  .enhanced-card-header {
+    @apply flex flex-row items-center justify-between space-y-0 pb-2 border-b border-muted/20;
+  }
+
+  .enhanced-card-icon {
+    @apply flex h-10 w-10 items-center justify-center rounded-full bg-primary/10;
+  }
+
+  /* Glass effect */
+  .glass-effect {
+    @apply bg-white/10 backdrop-blur-md border border-white/20 shadow-lg;
+  }
+
+  .dark .glass-effect {
+    @apply bg-black/20 backdrop-blur-md border border-white/10 shadow-lg;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-foreground to-foreground/60 bg-clip-text text-transparent;
+  }
+
+  .gradient-text-primary {
+    @apply bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent;
+  }
+
+  /* Sophisticated shadows */
+  .shadow-soft {
+    box-shadow: 0 10px 50px -12px rgba(0, 0, 0, 0.25);
+  }
+
+  .shadow-card {
+    box-shadow: 0 20px 80px -20px rgba(0, 0, 0, 0.3);
+  }
+
+  .shadow-button {
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Status badges */
+  .status-badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+  }
+
+  .status-active {
+    @apply bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400;
+  }
+
+  .status-pending {
+    @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400;
+  }
+
+  .status-executed {
+    @apply bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400;
+  }
+
+  .status-defeated {
+    @apply bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400;
+  }
+}
